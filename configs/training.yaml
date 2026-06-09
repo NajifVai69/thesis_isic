@@ -1,0 +1,56 @@
+# Training hyperparameters for ISIC-2019 classification.
+# These apply to ALL models (baselines + proposed).
+# Override per-model knobs on the command line, e.g.:
+#   python -m training.train --model mobilevit_s --batch_size 128
+
+model: resnet18             # default; override with --model
+
+training:
+  epochs: 100
+  batch_size: 128           # effective batch (see grad_accum_steps)
+  grad_accum_steps: 1       # set to 2 if OOM (hybrid model may need 2 at bs=96)
+
+optimizer:
+  name: adamw
+  lr: 3.0e-4
+  weight_decay: 1.0e-4       # lower WD benefits CNN baselines; ViT/hybrid can use 0.05
+  betas: [0.9, 0.999]
+  backbone_lr_scale: 0.3     # backbone gets lr*0.3, head gets full lr (differential LR)
+
+scheduler:
+  name: cosine_with_warmup
+  warmup_epochs: 5          # linear warmup from lr * 1e-4 to lr
+  min_lr: 1.0e-6            # cosine floor
+
+loss:
+  name: cb_focal
+  beta: 0.999            # 0.9999 → weight ratio 37× (class collapse); 0.999 → 7× (stable)
+  gamma: 2.5
+  label_smoothing: 0.1   # prevents overconfident memorisation of rare classes
+
+ema:
+  enabled: true
+  decay: 0.9998
+
+mixup:
+  enabled: true
+  alpha: 0.4                 # Beta(alpha, alpha) interpolation coefficient
+  prob: 0.5                  # fraction of batches where mixup is applied
+
+sampler:
+  weighted: true             # WeightedRandomSampler with 1/sqrt(n) class weights
+
+# GPU / performance flags
+channels_last: true         # ~15% speedup on Ada Lovelace (4070 Ti Super)
+mixed_precision: true       # torch.amp.autocast + GradScaler
+
+# torch.compile NOTE: requires Triton which is NOT available on Windows.
+# Set to false to skip.  Re-enable on Linux / WSL2 for additional speed.
+compile: false
+
+# Evaluation
+tta:
+  enabled: true             # used in eval.py; no effect during training
+  n_views: 8                # 8 geometric views (flips × rotations)
+
+seed: 42                    # override with --seed for multi-seed runs

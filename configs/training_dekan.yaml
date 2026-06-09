@@ -1,0 +1,60 @@
+# Training hyperparameters for the DEKAN flagship model family.
+# Use with:
+#   python -m training.train --model dekan_full --train_config configs/training_dekan.yaml
+#   python -m training.train --model dekan_linear --train_config configs/training_dekan.yaml
+#   python -m training.train --model dekan_no_meta --train_config configs/training_dekan.yaml
+#
+# Key differences from configs/training.yaml:
+#   - batch_size: 64  (DenseNet activations are memory-heavy; 64 × grad_accum 4 = eff. 256)
+#   - grad_accum_steps: 4
+#   - weight_decay: 0.05  (ViT-style; safe for the transformer trunk)
+#   - backbone_lr_scale: 0.1  (two pretrained CNN stems need gentler finetuning)
+
+model: dekan_full           # default; override with --model on the CLI
+
+training:
+  epochs: 150
+  batch_size: 64            # physical batch; two large CNN stems need memory headroom
+  grad_accum_steps: 4       # effective batch = 64 × 4 = 256
+
+optimizer:
+  name: adamw
+  lr: 3.0e-4
+  weight_decay: 0.05        # ViT-style WD — works well for transformer + KAN head
+  betas: [0.9, 0.999]
+  backbone_lr_scale: 0.1    # two pretrained CNN stems; gentler than single-stem 0.3
+
+scheduler:
+  name: cosine_with_warmup
+  warmup_epochs: 5
+  min_lr: 1.0e-6
+
+loss:
+  name: cb_focal
+  beta: 0.999
+  gamma: 2.5
+  label_smoothing: 0.1
+
+ema:
+  enabled: true
+  decay: 0.9998
+
+mixup:
+  enabled: true
+  alpha: 0.4
+  prob: 0.5
+
+sampler:
+  weighted: true            # WeightedRandomSampler (1/sqrt(n)) stacks with CB-Focal
+
+channels_last: true
+mixed_precision: true       # torch.amp.autocast + GradScaler; KAN head is fp32-pinned internally
+
+# torch.compile: requires Triton — not available on Windows. Keep false.
+compile: false
+
+tta:
+  enabled: true
+  n_views: 8
+
+seed: 42

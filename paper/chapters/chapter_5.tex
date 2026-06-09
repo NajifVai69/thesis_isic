@@ -1,0 +1,259 @@
+This chapter describes the full pipeline: how images and metadata are prepared,
+the two proposed architectures, the loss that handles the class imbalance, and
+the training and evaluation protocol shared by every model in the study.
+
+\section{Preprocessing Pipeline}
+
+Raw dermoscopic images vary in size, illumination, and --- because ISIC-2019 is
+a union of several archives --- in the presence of near-duplicate photographs of
+the same lesion. The pipeline cleans all of this once, before any training, in
+three steps.
+
+\textbf{Near-duplicate removal.} We compute a 64-bit perceptual hash (pHash) for
+every image and group images whose hashes are within a Hamming distance of 4
+using union-find, keeping a single representative per group. This removed
+1{,}263 near-duplicates, leaving 24{,}068 unique images. Removing duplicates
+before splitting is what prevents the same lesion from leaking between training
+and test.
+
+\textbf{Lesion-grouped stratified split.} We split the data 70/10/20 into
+training, validation, and test sets. The split is stratified jointly on class
+and source (HAM/BCN/MSK) so each split has a representative mix, and it is
+grouped by lesion identifier so that every image of a given physical lesion lands
+in the same split. The result is 16{,}872 training, 2{,}400 validation, and
+4{,}796 test images.
+
+\textbf{Colour constancy and memmap.} Each kept image is corrected with
+Shades-of-Gray colour constancy~\cite{finlayson2004shadesofgray} (Minkowski norm
+$p=6$) to reduce the strong illumination differences between dermatoscopes,
+then short-side-resized and centre-cropped to $224\times224$. The entire cleaned
+dataset is written once to a single memory-mapped \texttt{uint8} array together
+with the labels and metadata. At training time this array is opened read-only and
+stays resident in the host's page cache, so after the first epoch a batch costs
+little more than a memory copy --- the key optimisation that makes single-worker
+data loading on Windows fast enough.
+
+\section{Overview of the Proposed Models}
+
+We propose two models that share a common idea --- convolutional features, a
+transformer trunk for global reasoning, and a cross-attention head that folds in
+clinical metadata --- but sit at two different points on the
+accuracy/efficiency curve. Figure~\ref{fig:arch} sketches both. The first,
+which we refer to as the \emph{lightweight hybrid}, is built to stay under 6M
+parameters. The second, \emph{DEKAN}, spends more capacity in exchange for higher
+balanced accuracy.
+
+\begin{figure}[H]
+\centering
+\resizebox{\textwidth}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={rectangle, rounded corners=2pt, draw=black!60, align=center,
+              text width=3cm, minimum height=8mm, inner sep=3pt},
+  io/.style={box, fill=black!8},
+  cnn/.style={box, fill=blue!10},
+  tx/.style={box, fill=orange!18},
+  meta/.style={box, fill=green!18, text width=2.4cm},
+  head/.style={box, fill=red!14},
+  stem/.style={cnn, text width=2.2cm},
+  arr/.style={-{Latex[length=2mm]}, thick, black!70},
+]
+% ----- Column A: Lightweight Hybrid -----
+\node[font=\footnotesize\bfseries] (atitle) at (0,0) {(a) Lightweight Hybrid};
+\node[io]   (a0) at (0,-1.4) {Input image\\$3\times224\times224$};
+\node[cnn]  (a1) at (0,-2.9) {Truncated MobileNetV2\\stem (stride-16)\\$96\times14\times14$};
+\node[tx]   (a2) at (0,-4.5) {Patch proj.\ ($2{\times}2$)\\49 tokens, $d{=}192$\\$+$ CLS $+$ pos.\ embed};
+\node[tx]   (a3) at (0,-6.1) {ViT trunk\\$6$ blocks, $4$ heads};
+\node[tx]   (a4) at (0,-7.4) {CLS token};
+\node[meta] (a5) at (0,-8.7) {Metadata\\cross-attention};
+\node[head] (a6) at (0,-10.1) {Linear classifier\\(8 classes)};
+\node[meta] (am) at (-3.7,-8.7) {Metadata\\age, sex, site\\(learned ``missing'')};
+\draw[arr] (a0)--(a1);
+\draw[arr] (a1)--(a2);
+\draw[arr] (a2)--(a3);
+\draw[arr] (a3)--(a4);
+\draw[arr] (a4)--(a5);
+\draw[arr] (a5)--(a6);
+\draw[arr] (am)--(a5);
+% ----- Column B: DEKAN -----
+\node[font=\footnotesize\bfseries] (btitle) at (7.2,0) {(b) DEKAN};
+\node[io]   (b0)  at (7.2,-1.4) {Input image\\$3\times224\times224$};
+\node[stem] (b1a) at (5.5,-2.9) {DenseNet-121\\stem (stride-16)};
+\node[stem] (b1b) at (8.9,-2.9) {EfficientNet-B0\\stem (stride-16)};
+\node[tx]   (b2)  at (7.2,-4.5) {Attention fusion\\(learned query bank)};
+\node[tx]   (b3)  at (7.2,-6.1) {TinyViT trunk\\$8$ blocks, $8$ heads\\$+$ CLS $+$ pos.\ embed};
+\node[tx]   (b4)  at (7.2,-7.4) {CLS token};
+\node[meta] (b5)  at (7.2,-8.7) {Metadata\\cross-attention};
+\node[head] (b6)  at (7.2,-10.1) {KAN classifier\\(8 classes)};
+\node[meta] (bm)  at (10.9,-8.7) {Metadata\\age, sex, site\\(learned ``missing'')};
+\draw[arr] (b0)--(b1a);
+\draw[arr] (b0)--(b1b);
+\draw[arr] (b1a)--(b2);
+\draw[arr] (b1b)--(b2);
+\draw[arr] (b2)--(b3);
+\draw[arr] (b3)--(b4);
+\draw[arr] (b4)--(b5);
+\draw[arr] (b5)--(b6);
+\draw[arr] (bm)--(b5);
+\end{tikzpicture}%
+}
+\caption{High-level architecture of the two proposed models. Both share the same
+philosophy --- convolutional features, a transformer trunk, and a metadata
+cross-attention head --- at two capacity points. (a) the lightweight hybrid uses
+a single truncated MobileNetV2 stem and a 6-layer ViT trunk with a linear head;
+(b) DEKAN fuses two pretrained backbones (DenseNet-121, EfficientNet-B0) through
+a learned attention bank, runs an 8-layer TinyViT trunk, and ends in a KAN head.}
+\label{fig:arch}
+\end{figure}
+
+\section{Lightweight Hybrid CNN--Transformer}
+
+\subsection{CNN stem}
+
+The stem is a MobileNetV2~\cite{sandler2018mobilenetv2} (width 1.0), loaded with
+ImageNet weights and truncated at the stride-16 stage so that a
+$224\times224$ image produces a $96\times14\times14$ feature map. Using a
+pretrained convolutional front end gives the model generic edge and texture
+detectors for free, which matters because the transformer that follows is trained
+from scratch on only about 17{,}000 images. In our budget accounting the stem
+accounts for roughly 1.81M of the model's parameters.
+
+\subsection{Transformer trunk}
+
+A $2\times2$ stride-2 convolution projects the $96$-channel, $14\times14$ feature
+map into a sequence of $7\times7 = 49$ tokens of dimension 192; this both embeds
+the patches and halves the spatial resolution so that self-attention, which is
+quadratic in the number of tokens, stays cheap. A learnable class (CLS) token is
+prepended and a learnable positional embedding added, giving 50 tokens. These
+pass through six pre-norm transformer blocks with four attention heads, an MLP
+expansion ratio of 2, and a linearly increasing stochastic-depth
+rate~\cite{huang2016stochasticdepth} up to 0.1, which is what keeps a small
+from-scratch transformer from overfitting at this data scale. The CLS token after
+the final layer summarises the image globally.
+
+\subsection{Metadata cross-attention head}
+
+Clinical metadata enters through a single cross-attention block in which the
+image CLS token is the query and three metadata tokens --- age, sex, and
+anatomical site --- are the keys and values. Age, a continuous value, is mapped
+to a token by a linear projection; sex and site, which are categorical, use
+learned embeddings. Missing values are handled explicitly: age has a dedicated
+learned ``missing'' vector that replaces its projection when the value is absent,
+and the categorical embeddings reserve an extra slot for ``missing.'' Each token
+also carries a learned type embedding so the attention can tell the three fields
+apart. The block lets the model nudge the image representation using context ---
+for instance, raising the prior on actinic keratosis for an older patient ---
+without ever being forced to act on a fabricated value. The updated CLS token
+feeds a linear classifier producing eight logits.
+
+The complete lightweight hybrid has 3.98M parameters and 0.631 GMACs, comfortably
+inside the budget of 6M parameters and 1 GMAC.
+
+\section{DEKAN: Dual-Backbone Flagship Model}
+
+DEKAN keeps the same overall shape but invests capacity where it buys accuracy.
+
+\textbf{Two complementary backbones.} Instead of one stem it runs two in
+parallel --- DenseNet-121~\cite{huang2017densenet} and
+EfficientNet-B0~\cite{tan2019efficientnet}, both ImageNet-pretrained and both
+truncated to the stride-16 stage. The two networks encode the same lesion through
+different inductive biases, and the model is given the chance to use whichever is
+more informative per region.
+
+\textbf{Learned attention fusion.} Each backbone's feature map is projected to
+49 tokens of dimension 256 and tagged with a per-backbone embedding. A learnable
+bank of 49 query tokens then cross-attends over the concatenation of both token
+sets (98 tokens) and produces a single fused sequence of 49 tokens. This is a
+learned, content-dependent fusion rather than a fixed concatenation or average:
+the query bank decides, position by position, how much to take from each
+backbone.
+
+\textbf{Transformer trunk and metadata.} A CLS token and positional embedding are
+prepended to the fused sequence, which then passes through an eight-layer
+TinyViT-style transformer trunk (dimension 256, eight heads, MLP ratio 4),
+followed by the same metadata cross-attention head described above.
+
+\textbf{KAN classifier.} The final classifier is a single Kolmogorov--Arnold
+layer~\cite{liu2024kan} mapping the 256-dimensional CLS representation to eight
+logits, with a grid size of 5 and cubic ($\text{order}=3$) B-splines. Its spline
+basis is computed in full precision for numerical stability even under mixed
+precision. We deliberately keep a linear-head version of the otherwise-identical
+model so that the KAN's contribution can be measured directly (Chapter~5).
+
+DEKAN has 16.45M parameters and 6.633 GMACs.
+
+\section{Class-Balanced Focal Loss}
+
+To counter the imbalance in Table~\ref{tab:classdist}, every model is trained
+with Class-Balanced Focal Loss, which combines the effective-number reweighting
+of Cui et al.~\cite{cui2019classbalanced} with the focal modulation of Lin et
+al.~\cite{lin2017focal}. The effective number of samples for a class with $n$
+examples is $E(n) = (1-\beta^{n})/(1-\beta)$, and the per-class weight is
+$\alpha = (1-\beta)/(1-\beta^{n})$, normalised so the weights sum to the number
+of classes. The per-sample loss is
+
+\begin{equation}
+\mathcal{L} = -\,\alpha_y\,(1 - p_y)^{\gamma}\,\mathrm{CE}_{\text{smooth}}(\text{logits}, y),
+\end{equation}
+
+where $p_y$ is the predicted probability of the true class, the
+$(1-p_y)^{\gamma}$ term down-weights easy examples so that learning focuses on
+the hard, often rare, cases, and $\mathrm{CE}_{\text{smooth}}$ is a
+label-smoothed cross-entropy. In our configuration $\beta = 0.999$,
+$\gamma = 2.5$, and the label-smoothing factor is $0.1$. The choice of
+$\beta = 0.999$ rather than a more aggressive value is deliberate: a larger
+$\beta$ produced an extreme weight ratio between the common and rare classes and
+caused the rare classes to collapse early in training, whereas $0.999$ gives
+stable optimisation.
+
+\section{Training Protocol}
+
+All models --- the five baselines and both proposed models --- are trained with
+an identical recipe so that comparisons are fair; only batch size, gradient
+accumulation, and the backbone learning-rate scale differ, as dictated by each
+model's memory footprint. The optimiser is AdamW~\cite{loshchilov2019adamw} with
+a base learning rate of $3\times10^{-4}$, $\beta=(0.9, 0.999)$, and gradients
+clipped to a maximum norm of 5. Pretrained CNN stems are fine-tuned gently at a
+fraction of the base learning rate (0.3$\times$ for the hybrid, 0.1$\times$ for
+DEKAN) while from-scratch components train at the full rate. The schedule is a
+five-epoch linear warmup followed by cosine annealing~\cite{loshchilov2017sgdr}
+to a minimum learning rate of $10^{-6}$. Training uses automatic mixed precision
+and channels-last memory layout throughout, a weight exponential moving average
+(EMA, decay $0.9998$) whose weights are used for validation and final
+evaluation, and a weighted random sampler that draws rare classes more often.
+Data augmentation combines horizontal and vertical flips, random resized crops,
+colour jitter, RandAugment~\cite{cubuk2020randaugment}, and
+Mixup~\cite{zhang2018mixup} (strength $\alpha=0.4$, applied to half the batches),
+with metrics always computed on the original, unmixed labels. Table~\ref{tab:traincfg}
+lists the per-model settings that vary.
+
+\begin{table}[H]
+\centering
+\caption{Per-model training settings. All other hyperparameters (loss, optimiser
+base LR, schedule, EMA, augmentation) are identical across models.}
+\label{tab:traincfg}
+\begin{tabular}{lrrrrr}
+\toprule
+Model & Batch & Grad accum & Eff.\ batch & Epochs & Backbone LR \\
+\midrule
+ResNet-18           & 256 & 1 & 256 & 100 & 0.3$\times$ \\
+MobileNetV2         & 256 & 1 & 256 & 100 & 0.3$\times$ \\
+EfficientNet-B0     & 128 & 2 & 256 & 100 & 0.3$\times$ \\
+MobileViT-S         & 128 & 2 & 256 & 150 & 0.3$\times$ \\
+EfficientFormer-L1  & 128 & 1 & 128 & 100 & 0.3$\times$ \\
+Hybrid (full)       & 96  & 3 & 288 & 150 & 0.3$\times$ \\
+DEKAN (full)        & 64  & 4 & 256 & 150 & 0.1$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Evaluation Protocol}
+
+The primary metric is balanced multi-class accuracy (BMA), the unweighted mean of
+the eight per-class recalls, which gives every class --- common or rare --- equal
+say. We additionally report macro-F1, macro-AUC, overall accuracy, and per-class
+recall, and we visualise errors with a confusion matrix normalised by true class.
+At inference we apply eight-view test-time augmentation (TTA): the model is run
+on the original image plus a fixed set of flips and rotations and the softmax
+outputs are averaged. The best checkpoint is selected by validation BMA, and all
+headline numbers are reported on the held-out test split.

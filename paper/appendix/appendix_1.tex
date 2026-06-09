@@ -1,0 +1,33 @@
+\section*{Appendix A: Reproducibility}
+
+\textbf{Dataset.} ISIC-2019 training collection (25{,}331 images, 8 classes),
+reduced to 24{,}068 images after perceptual-hash deduplication and split
+70/10/20 (16{,}872 / 2{,}400 / 4{,}796) with a lesion-grouped, class-and-source
+stratified split.
+
+\textbf{Preprocessing.} Shades-of-Gray colour constancy ($p=6$), short-side
+resize and centre-crop to $224\times224$, stored as a single memory-mapped
+\texttt{uint8} array.
+
+\textbf{Loss and optimisation.} Class-Balanced Focal Loss ($\beta=0.999$,
+$\gamma=2.5$, label smoothing $0.1$); AdamW (base LR $3\times10^{-4}$,
+$\beta=(0.9,0.999)$, gradient clip norm 5); 5-epoch linear warmup then cosine
+annealing to $10^{-6}$; weight EMA (decay $0.9998$); weighted random sampler;
+automatic mixed precision and channels-last layout. Augmentation: flips, random
+resized crop, colour jitter, RandAugment, and Mixup ($\alpha=0.4$).
+
+\textbf{Per-model batch / accumulation / epochs.} See Table~\ref{tab:traincfg}.
+The lightweight hybrid uses batch 96, accumulation 3, 150 epochs; DEKAN uses
+batch 64, accumulation 4, 150 epochs.
+
+\textbf{Evaluation.} Primary metric BMA (mean per-class recall); secondary
+macro-F1, macro-AUC, accuracy; 8-view TTA (flips and rotations, mean softmax);
+checkpoint selected by best validation BMA. All reported numbers use seed 42.
+
+\textbf{Figures.} Figures in this thesis are generated from the saved evaluation
+outputs. The expected figure files are:
+\texttt{01\_training\_curves.pdf}, \texttt{02\_model\_comparison.pdf},
+\texttt{03\_confusion\_matrix.pdf}, \texttt{04\_per\_class\_recall.pdf},
+\texttt{05\_efficiency\_scatter.pdf}, \texttt{06\_ablation.pdf}, and
+\texttt{07\_dekan\_ablation.pdf}. The architecture schematic
+(Figure~\ref{fig:arch}) is drawn inline with TikZ and needs no external file.

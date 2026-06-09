@@ -1,0 +1,248 @@
+%*******************************************************************
+%  References for:
+%  "Hybrid CNN-Transformer Networks with Clinical Metadata for
+%   Skin Lesion Classification"
+%
+%  Citation style: IEEE (biblatex backend=biber).
+%  All entries are real, published works used directly by or cited
+%  in the codebase / paper. Where a value could not be independently
+%  verified during preparation it is marked with a % [VERIFY] comment.
+%*******************************************************************
+
+% ── Required source #1: provided verbatim by the authors ──────────
+@inproceedings{aktan2025comparison,
+  author    = {Aktan, Anil and Almouradi, Alaa and Aptoula, Erchan and Yanikoglu, Berrin},
+  title     = {Comparison of Leading Deep Learning Architectures on Skin Lesion Classification Using the ISIC 2019 Dataset},
+  booktitle = {2025 Medical Technologies Congress (TIPTEKNO)},
+  year      = {2025},
+  month     = {10},
+  pages     = {1--4},
+  publisher = {IEEE},
+  doi       = {10.1109/TIPTEKNO68206.2025.11270128}
+}
+
+% ── Required source #2: ISIC 2019 Challenge leaderboard ───────────
+@misc{isic2019leaderboard,
+  author       = {{International Skin Imaging Collaboration}},
+  title        = {{ISIC} 2019 Challenge Leaderboard},
+  year         = {2019},
+  howpublished = {\url{https://challenge.isic-archive.com/leaderboards/2019/}},
+  note         = {Accessed: 2026-06-09. Official ranking metric: balanced accuracy. Top entry: DAISYLab, 0.636}
+}
+
+% ── ISIC 2019 dataset constituent challenges / sources ────────────
+@misc{isic2019challenge,
+  author       = {Combalia, Marc and Codella, Noel C. F. and Rotemberg, Veronica and Helba, Brian and Vilaplana, Veronica and Reiter, Ofer and Carrera, Cristina and Barreiro, Alicia and Halpern, Allan C. and Puig, Susana and Malvehy, Josep},
+  title        = {{BCN20000}: Dermoscopic Lesions in the Wild},
+  year         = {2019},
+  eprint       = {1908.02288},
+  archivePrefix = {arXiv},
+  primaryClass = {eess.IV},
+  doi          = {10.48550/arXiv.1908.02288}
+}
+
+@article{tschandl2018ham10000,
+  author  = {Tschandl, Philipp and Rosendahl, Cliff and Kittler, Harald},
+  title    = {The {HAM10000} dataset, a large collection of multi-source dermatoscopic images of common pigmented skin lesions},
+  journal = {Scientific Data},
+  volume  = {5},
+  number  = {1},
+  pages   = {180161},
+  year    = {2018},
+  doi     = {10.1038/sdata.2018.161}
+}
+
+@article{codella2018skin,
+  author  = {Codella, Noel C. F. and Gutman, David and Celebi, M. Emre and Helba, Brian and Marchetti, Michael A. and Dusza, Stephen W. and Kalloo, Aadi and Liopyris, Konstantinos and Mishra, Nabin and Kittler, Harald and Halpern, Allan C.},
+  title   = {Skin Lesion Analysis Toward Melanoma Detection: A Challenge at the 2017 International Symposium on Biomedical Imaging ({ISBI}), Hosted by the International Skin Imaging Collaboration ({ISIC})},
+  journal = {arXiv preprint arXiv:1710.05006},
+  year    = {2017},
+  doi     = {10.48550/arXiv.1710.05006}
+}
+
+% ── Backbones / architectures used in the proposed models ─────────
+@inproceedings{sandler2018mobilenetv2,
+  author    = {Sandler, Mark and Howard, Andrew and Zhu, Menglong and Zhmoginov, Andrey and Chen, Liang-Chieh},
+  title     = {{MobileNetV2}: Inverted Residuals and Linear Bottlenecks},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {4510--4520},
+  year      = {2018},
+  doi       = {10.1109/CVPR.2018.00474}
+}
+
+@inproceedings{huang2017densenet,
+  author    = {Huang, Gao and Liu, Zhuang and van der Maaten, Laurens and Weinberger, Kilian Q.},
+  title     = {Densely Connected Convolutional Networks},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {4700--4708},
+  year      = {2017},
+  doi       = {10.1109/CVPR.2017.243}
+}
+
+@inproceedings{tan2019efficientnet,
+  author    = {Tan, Mingxing and Le, Quoc V.},
+  title     = {{EfficientNet}: Rethinking Model Scaling for Convolutional Neural Networks},
+  booktitle = {Proceedings of the 36th International Conference on Machine Learning (ICML)},
+  pages     = {6105--6114},
+  year      = {2019}
+}
+
+@inproceedings{he2016resnet,
+  author    = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
+  title     = {Deep Residual Learning for Image Recognition},
+  booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {770--778},
+  year      = {2016},
+  doi       = {10.1109/CVPR.2016.90}
+}
+
+% ── Transformers / hybrids ────────────────────────────────────────
+@inproceedings{dosovitskiy2021vit,
+  author    = {Dosovitskiy, Alexey and Beyer, Lucas and Kolesnikov, Alexander and Weissenborn, Dirk and Zhai, Xiaohua and Unterthiner, Thomas and Dehghani, Mostafa and Minderer, Matthias and Heigold, Georg and Gelly, Sylvain and Uszkoreit, Jakob and Houlsby, Neil},
+  title     = {An Image is Worth 16x16 Words: Transformers for Image Recognition at Scale},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2021}
+}
+
+@inproceedings{vaswani2017attention,
+  author    = {Vaswani, Ashish and Shazeer, Noam and Parmar, Niki and Uszkoreit, Jakob and Jones, Llion and Gomez, Aidan N. and Kaiser, Lukasz and Polosukhin, Illia},
+  title     = {Attention Is All You Need},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {30},
+  year      = {2017}
+}
+
+@inproceedings{mehta2022mobilevit,
+  author    = {Mehta, Sachin and Rastegari, Mohammad},
+  title     = {{MobileViT}: Light-weight, General-purpose, and Mobile-friendly Vision Transformer},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2022}
+}
+
+@inproceedings{li2022efficientformer,
+  author    = {Li, Yanyu and Yuan, Geng and Wen, Yang and Hu, Ju and Evangelidis, Georgios and Tulyakov, Sergey and Wang, Yanzhi and Ren, Jian},
+  title     = {{EfficientFormer}: Vision Transformers at {MobileNet} Speed},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  volume    = {35},
+  pages     = {12934--12949},
+  year      = {2022}
+}
+
+% ── Kolmogorov-Arnold Networks ────────────────────────────────────
+@article{liu2024kan,
+  author  = {Liu, Ziming and Wang, Yixuan and Vaidya, Sachin and Ruehle, Fabian and Halverson, James and Solja{\v{c}}i{\'c}, Marin and Hou, Thomas Y. and Tegmark, Max},
+  title   = {{KAN}: Kolmogorov--Arnold Networks},
+  journal = {arXiv preprint arXiv:2404.19756},
+  year    = {2024},
+  doi     = {10.48550/arXiv.2404.19756}
+}
+
+% ── Loss / training techniques ────────────────────────────────────
+@inproceedings{cui2019classbalanced,
+  author    = {Cui, Yin and Jia, Menglin and Lin, Tsung-Yi and Song, Yang and Belongie, Serge},
+  title     = {Class-Balanced Loss Based on Effective Number of Samples},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
+  pages     = {9268--9277},
+  year      = {2019},
+  doi       = {10.1109/CVPR.2019.00949}
+}
+
+@inproceedings{lin2017focal,
+  author    = {Lin, Tsung-Yi and Goyal, Priya and Girshick, Ross and He, Kaiming and Doll{\'a}r, Piotr},
+  title     = {Focal Loss for Dense Object Detection},
+  booktitle = {Proceedings of the IEEE International Conference on Computer Vision (ICCV)},
+  pages     = {2980--2988},
+  year      = {2017},
+  doi       = {10.1109/ICCV.2017.324}
+}
+
+@inproceedings{zhang2018mixup,
+  author    = {Zhang, Hongyi and Cisse, Moustapha and Dauphin, Yann N. and Lopez-Paz, David},
+  title     = {mixup: Beyond Empirical Risk Minimization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2018}
+}
+
+@inproceedings{cubuk2020randaugment,
+  author    = {Cubuk, Ekin D. and Zoph, Barret and Shlens, Jonathon and Le, Quoc V.},
+  title     = {{RandAugment}: Practical Automated Data Augmentation with a Reduced Search Space},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition Workshops (CVPRW)},
+  pages     = {702--703},
+  year      = {2020}
+}
+
+@inproceedings{huang2016stochasticdepth,
+  author    = {Huang, Gao and Sun, Yu and Liu, Zhuang and Sedra, Daniel and Weinberger, Kilian Q.},
+  title     = {Deep Networks with Stochastic Depth},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  pages     = {646--661},
+  year      = {2016},
+  doi       = {10.1007/978-3-319-46493-0_39}
+}
+
+@inproceedings{loshchilov2019adamw,
+  author    = {Loshchilov, Ilya and Hutter, Frank},
+  title     = {Decoupled Weight Decay Regularization},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2019}
+}
+
+@inproceedings{loshchilov2017sgdr,
+  author    = {Loshchilov, Ilya and Hutter, Frank},
+  title     = {{SGDR}: Stochastic Gradient Descent with Warm Restarts},
+  booktitle = {International Conference on Learning Representations (ICLR)},
+  year      = {2017}
+}
+
+% ── Color constancy ───────────────────────────────────────────────
+@inproceedings{finlayson2004shadesofgray,
+  author    = {Finlayson, Graham D. and Trezzi, Elisabetta},
+  title     = {Shades of Gray and Colour Constancy},
+  booktitle = {Color and Imaging Conference (CIC)},
+  pages     = {37--41},
+  year      = {2004}
+}
+
+% ── Metadata fusion in dermatology ────────────────────────────────
+@article{pacheco2021attention,
+  author  = {Pacheco, Andre G. C. and Krohling, Renato A.},
+  title   = {An attention-based mechanism to combine images and metadata in deep learning models applied to skin cancer classification},
+  journal = {IEEE Journal of Biomedical and Health Informatics},
+  volume  = {25},
+  number  = {9},
+  pages   = {3554--3563},
+  year    = {2021},
+  doi     = {10.1109/JBHI.2021.3062002}
+}
+
+@article{pacheco2020impact,
+  author  = {Pacheco, Andre G. C. and Krohling, Renato A.},
+  title   = {The impact of patient clinical information on automated skin cancer detection},
+  journal = {Computers in Biology and Medicine},
+  volume  = {116},
+  pages   = {103545},
+  year    = {2020},
+  doi     = {10.1016/j.compbiomed.2019.103545}
+}
+
+% ── Foundational dermatology deep learning ────────────────────────
+@article{esteva2017dermatologist,
+  author  = {Esteva, Andre and Kuprel, Brett and Novoa, Roberto A. and Ko, Justin and Swetter, Susan M. and Blau, Helen M. and Thrun, Sebastian},
+  title   = {Dermatologist-level classification of skin cancer with deep neural networks},
+  journal = {Nature},
+  volume  = {542},
+  number  = {7639},
+  pages   = {115--118},
+  year    = {2017},
+  doi     = {10.1038/nature21056}
+}
+
+@article{gessert2020ensembles,
+  author  = {Gessert, Nils and Nielsen, Maximilian and Shaikh, Mohsin and Werner, Ren{\'e} and Schlaefer, Alexander},
+  title   = {Skin lesion classification using ensembles of multi-resolution {EfficientNets} with meta data},
+  journal = {MethodsX},
+  volume  = {7},
+  pages   = {100864},
+  year    = {2020},
+  doi     = {10.1016/j.mex.2020.100864}
+}

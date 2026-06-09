@@ -1,0 +1,91 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+.venv
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Data & preprocessing outputs
+*.npy
+*.npz
+*.csv
+phash.csv
+dedup_keep.csv
+split.csv
+memmap_index.csv
+
+# Large dataset directories (9+ GB of raw images — never commit; pull from Kaggle)
+isic_data/raw/
+isic_data/processed/
+datasets/memmap/
+datasets/isic2019/
+datasets/isic2020/
+datasets/**/*.jpg
+datasets/**/*.jpeg
+datasets/**/*.png
+
+# Training outputs
+results/
+checkpoints/
+logs/
+*.pth
+*.pt
+*.safetensors
+
+# Analysis outputs
+analysis/plots/
+analysis/results/
+
+# OS specific
+.DS_Store
+Thumbs.db
+.env
+.env.local
+
+# Cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Misc
+*.log
+tmp/
+temp/
+*.bak

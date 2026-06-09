@@ -1,0 +1,128 @@
+\section{Background}
+
+Skin cancer is among the most common cancers worldwide, and the prognosis for a
+patient depends heavily on how early the lesion is found. Melanoma in
+particular is highly treatable when caught early but becomes far more dangerous
+once it spreads. Dermoscopy --- a non-invasive imaging technique that removes
+surface glare and reveals the sub-surface structure of a lesion --- has become a
+standard tool for this kind of early assessment. Reading dermoscopic images
+well, however, takes years of training, and even experienced dermatologists do
+not always agree with one another. This gap between the volume of lesions that
+need screening and the number of specialists available to read them is what
+motivates automated, image-based diagnostic support.
+
+Deep learning has reshaped this area over the past decade. Convolutional neural
+networks (CNNs) trained on large dermoscopic collections reached
+dermatologist-level performance on melanoma recognition~\cite{esteva2017dermatologist},
+and the annual ISIC challenges have since turned skin lesion classification into
+a well-defined benchmark task. The ISIC-2019 dataset, which we use throughout
+this work, contains 25{,}331 labelled dermoscopic images spanning eight
+diagnostic categories: melanoma (MEL), melanocytic nevus (NV), basal cell
+carcinoma (BCC), actinic keratosis (AK), benign keratosis (BKL),
+dermatofibroma (DF), vascular lesion (VASC), and squamous cell carcinoma (SCC).
+
+More recently, Vision Transformers (ViTs)~\cite{dosovitskiy2021vit} and hybrid
+designs that place a transformer on top of convolutional
+features~\cite{mehta2022mobilevit,li2022efficientformer} have shown that
+modelling the global structure of a lesion --- its overall asymmetry, the
+regularity of its border --- complements the local texture that convolutions
+capture so well. These two views of a lesion, the local and the global, are
+exactly the cues a clinician is trained to weigh, which makes the
+CNN--Transformer combination a natural fit for dermoscopy.
+
+\section{Rationale of the Study or Motivation}
+
+Two practical problems keep most published skin-lesion models from being used in
+an everyday clinic. The first is cost. The strongest results on ISIC-2019 come
+from large ensembles of heavy networks~\cite{isic2019leaderboard,gessert2020ensembles};
+these are accurate but impractical to run on the modest hardware found in a
+typical dermatology practice or on a portable device next to the patient. The
+second is that image-only models ignore information a dermatologist always has
+in front of them. The age of the patient, their sex, and the part of the body
+where the lesion sits all shift the prior probability of each diagnosis --- a
+scaly patch on the face of an elderly patient is read very differently from the
+same patch on a young person's back. This clinical context is recorded in the
+ISIC-2019 metadata, yet it is routinely discarded by classifiers that look only
+at pixels.
+
+Our study is driven by the belief that these two problems should be solved
+together rather than separately. We argue that a carefully designed lightweight
+hybrid, fed with the same contextual metadata a clinician uses, can match or
+beat much larger image-only baselines while staying small enough to deploy. We
+also recognise that not every deployment has the same constraints, so we deliver
+two models from one design philosophy: a genuinely compact model for
+constrained settings, and a higher-capacity model for situations where balanced
+accuracy matters more than footprint.
+
+\section{Problem Statement}
+
+ISIC-2019 is severely imbalanced. The most common class, nevus, has roughly
+12{,}875 images, while dermatofibroma and vascular lesions have only about 239
+and 253 respectively --- a ratio of more than fifty to one. A model trained
+naively on this data learns to predict the common classes and quietly ignores
+the rare ones, which is the opposite of what matters clinically, since several
+of the rare classes are malignant. Reporting overall accuracy hides this failure
+entirely. The problem we address is therefore to build a model that performs
+well \emph{across all eight classes at once} --- measured by balanced
+multi-class accuracy (BMA), the mean of the per-class recalls --- while
+respecting a tight parameter and compute budget and while making use of the
+clinical metadata that accompanies each image, including the large fraction of
+records where some of that metadata is missing.
+
+\section{Objective}
+
+The objectives of this work are:
+
+\begin{enumerate}
+  \item To design a lightweight hybrid CNN--Transformer classifier for
+        ISIC-2019 that stays under 6M parameters and 1 GMAC, and that fuses
+        clinical metadata through a cross-attention head capable of handling
+        missing fields without imputation.
+  \item To design a second, higher-capacity model in the same family --- a
+        dual-backbone network with learned attention fusion and a
+        Kolmogorov--Arnold Network (KAN) classifier --- that trades footprint
+        for a higher balanced accuracy.
+  \item To train both models, together with five established lightweight
+        baselines, under one identical loss, augmentation, and evaluation
+        pipeline so that the comparison is fair.
+  \item To quantify the contribution of each design choice (the CNN stem, the
+        transformer trunk, the metadata head, the dual-backbone fusion, and the
+        KAN head) through controlled ablations, and to report efficiency
+        alongside accuracy.
+\end{enumerate}
+
+\section{Methodology in Brief}
+
+Every image passes through a fixed preprocessing pipeline: near-duplicate
+removal by perceptual hashing, a lesion-grouped stratified train/validation/test
+split, Shades-of-Gray colour constancy~\cite{finlayson2004shadesofgray}, and
+resizing to $224\times224$. The cleaned images are stored as a single memory-mapped
+array so that training does not pay a per-batch decoding cost. All models are
+trained with Class-Balanced Focal Loss~\cite{cui2019classbalanced,lin2017focal}
+to counter the imbalance, with AdamW, a cosine schedule with warmup, weight
+EMA, and eight-view test-time augmentation at inference. The lightweight model
+combines a truncated MobileNetV2 stem with a small ViT trunk and a metadata
+cross-attention head; the flagship model (DEKAN) fuses DenseNet-121 and
+EfficientNet-B0 features through learned attention before a transformer trunk and
+a KAN classifier. The primary metric throughout is BMA.
+
+\section{Scopes and Challenges}
+
+The scope of this thesis is the eight-class ISIC-2019 classification task and
+the two proposed architectures, evaluated against same-budget lightweight
+baselines on a held-out test split. The main challenges were the extreme class
+imbalance, the substantial missingness in the metadata (around 30\% of age
+values, for example), and a hard hardware budget --- all experiments run on a
+single 16~GB GPU under Windows, which rules out multi-worker data loading and
+forces aggressive use of mixed precision and a memory-mapped dataset. We did not
+extend the study to external test sets or to multi-seed reporting; both are
+discussed openly as limitations in Chapter~5.
+
+\section{Thesis Organization}
+
+Chapter~2 reviews the architectures and prior work this study builds on.
+Chapter~3 states the data, requirements, constraints, and broader impact of the
+system. Chapter~4 describes the preprocessing pipeline, the two proposed models,
+the loss, and the training and evaluation protocol. Chapter~5 presents and
+analyses the results, including ablations, efficiency, and a comparison with
+prior work. Chapter~6 concludes and outlines future work.

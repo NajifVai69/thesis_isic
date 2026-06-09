@@ -1,0 +1,92 @@
+\section{Dataset and Data Requirements}
+
+All experiments use the ISIC-2019 training collection, a public set of 25{,}331
+dermoscopic images labelled across the eight diagnostic classes listed in
+Chapter~1. The collection is itself a union of three sources --- HAM10000,
+BCN20000, and MSK --- which we infer from the image-ID prefix, because keeping
+track of the source matters for building an honest train/test split. Each image
+also carries clinical metadata: approximate age, sex, the general anatomical
+site of the lesion, and a lesion identifier that groups multiple images of the
+same physical lesion.
+
+The defining property of this dataset, and the one that drives most of our
+design decisions, is its class imbalance. Table~\ref{tab:classdist} shows the
+per-class counts for the full collection. The largest class, nevus, is more than
+fifty times larger than the smallest, dermatofibroma. Several of the rare
+classes (for example SCC and AK) are clinically important, so a model that
+simply learns the head of this distribution would be useless in practice. This
+is the central reason we report balanced multi-class accuracy rather than overall
+accuracy throughout.
+
+\begin{table}[H]
+\centering
+\caption{Class distribution of the full ISIC-2019 collection (before
+deduplication) and imbalance relative to the largest class (NV).}
+\label{tab:classdist}
+\begin{tabular}{llrr}
+\toprule
+Code & Full name & Images & Ratio vs.\ NV \\
+\midrule
+MEL  & Melanoma                  & 4{,}522  & 2.8$\times$  \\
+NV   & Melanocytic nevus         & 12{,}875 & 1$\times$    \\
+BCC  & Basal cell carcinoma      & 3{,}323  & 3.9$\times$  \\
+AK   & Actinic keratosis         & 867      & 14.8$\times$ \\
+BKL  & Benign keratosis          & 2{,}624  & 4.9$\times$  \\
+DF   & Dermatofibroma            & 239      & 53.9$\times$ \\
+VASC & Vascular lesion           & 253      & 50.9$\times$ \\
+SCC  & Squamous cell carcinoma   & 628      & 20.5$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The metadata is genuinely incomplete: roughly 30\% of age values, about 20\% of
+sex values, and about 15\% of anatomical-site values are missing, with the
+recorded ages centred near 54 years. Rather than fill these gaps with guessed
+values, our requirement is that the model treat ``missing'' as a first-class,
+learnable signal, which is reflected directly in the architecture (Chapter~4).
+
+\section{System Requirements}
+
+\subsection{Hardware}
+
+The project targets a single-workstation setting rather than a data centre. All
+training and evaluation run on one machine with an NVIDIA RTX 4070 Ti Super
+(16~GB of VRAM), an Intel Core i7-14700 CPU, and 64~GB of system memory. The
+16~GB memory ceiling is a real constraint: it sets the batch sizes we can use and
+makes mixed-precision training a necessity rather than an option.
+
+\subsection{Software}
+
+The implementation is in PyTorch with the \texttt{timm} library supplying the
+pretrained CNN backbones. The codebase is organised as importable modules
+(preprocessing, datasets, losses, models, training, analysis) so that every
+stage of the pipeline is reproducible from configuration files. Figures and the
+results tables in this thesis are generated directly from the saved evaluation
+outputs.
+
+\section{Design Constraints}
+
+Several hard constraints shaped the implementation. The models run under Windows,
+where the PyTorch data loader is prone to deadlocks with multiple worker
+processes; we therefore load data with zero worker processes and compensate by
+decoding the entire dataset once into a memory-mapped array, after which each
+batch is essentially a memory copy. The 16~GB GPU budget means automatic mixed
+precision and channels-last memory layout are used everywhere, and the
+larger models rely on gradient accumulation to reach a useful effective batch
+size. Beyond the hardware, we imposed an explicit efficiency budget on the
+lightweight model --- under 6M parameters and under 1 GMAC --- because a model
+that cannot run on modest clinic hardware does not meet the goal of the project.
+
+\section{Impacts}
+
+The intended impact of this work is a decision-support tool that is small enough
+to run where care is actually delivered, and that uses the same contextual
+information a clinician would. A compact model lowers the barrier to deployment
+on portable or low-cost hardware, which is most valuable exactly where
+specialist coverage is thin. At the same time, the system is meant to assist and
+not replace a clinician; it produces a ranked set of possibilities rather than a
+final diagnosis. We are also conscious of the ethical dimension: the data is
+de-identified and used only for research, the metadata is used solely as model
+input, and the reliance on balanced accuracy is itself an ethical choice, since
+it forces the model to take the rare, often malignant, classes seriously rather
+than optimising a number that the common classes dominate.

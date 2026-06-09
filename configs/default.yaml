@@ -1,0 +1,35 @@
+# ISIC-2019 skin lesion classification — default config.
+# Edit paths under `data:` to point at your Windows install of the dataset.
+# Everything else has sensible defaults.
+
+seed: 42
+
+data:
+  # Root that contains the per-class folders (AK/, BCC/, BKL/, DF/, MEL/, NV/, SCC/, VASC/)
+  # and the two CSV files. Use forward slashes even on Windows — pathlib handles it.
+  root: "datasets/isic2019"
+  groundtruth_csv: "ISIC_2019_Training_GroundTruth.csv"
+  metadata_csv: "ISIC_2019_Training_Metadata.csv"
+  # If your mirror is flat (one folder of all JPGs) instead of per-class, set this:
+  flat_input_dir: "ISIC_2019_Training_Input"   # tried as fallback if class folders not found
+
+  # Where preprocessing artifacts are written. Put on the SSD.
+  work_dir: "results/preprocessing"
+
+classes: [MEL, NV, BCC, AK, BKL, DF, VASC, SCC]   # order is locked; index = label id
+
+preprocessing:
+  image_size: 224                 # final HxW for memmap
+  color_constancy: shades_of_gray # "shades_of_gray" | "none"
+  cc_minkowski_p: 6
+  phash:
+    enabled: true
+    hash_size: 8                  # 64-bit pHash
+    hamming_threshold: 4          # <= this distance counts as near-duplicate
+  split:
+    train: 0.70
+    val: 0.10
+    test: 0.20
+    stratify_on_source: true      # stratify by (class, source) where source ∈ {HAM, BCN, MSK}
+
+# Training knobs come later (training.yaml) — kept out of preprocessing config on purpose.
