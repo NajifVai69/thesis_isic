@@ -67,9 +67,9 @@ edges rather than scalar weights feeding fixed activations. The promise is more
 expressive, more interpretable units, sometimes at fewer parameters. KANs are
 still new and most evidence comes from small scientific-regression problems, so
 whether they help as a classifier head on a noisy, imbalanced vision task is an
-open question. We include a KAN head in our flagship model and, crucially, also
-run the identical model with an ordinary linear head, so the question is answered
-rather than assumed.
+open question. We include a KAN head as the final classifier in our flagship
+model to explore whether its learnable splines add value at the output stage of
+a well-trained vision backbone.
 
 \subsection{Clinical metadata fusion}
 

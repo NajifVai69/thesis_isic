@@ -25,9 +25,85 @@ macro-F1, macro-AUC, accuracy; 8-view TTA (flips and rotations, mean softmax);
 checkpoint selected by best validation BMA. All reported numbers use seed 42.
 
 \textbf{Figures.} Figures in this thesis are generated from the saved evaluation
-outputs. The expected figure files are:
-\texttt{01\_training\_curves.pdf}, \texttt{02\_model\_comparison.pdf},
-\texttt{03\_confusion\_matrix.pdf}, \texttt{04\_per\_class\_recall.pdf},
-\texttt{05\_efficiency\_scatter.pdf}, \texttt{06\_ablation.pdf}, and
-\texttt{07\_dekan\_ablation.pdf}. The architecture schematic
+outputs. The expected figure files are listed below; the architecture schematic
 (Figure~\ref{fig:arch}) is drawn inline with TikZ and needs no external file.
+
+\begin{itemize}
+\item \texttt{01\_training\_curves.pdf}; \texttt{02\_model\_comparison.pdf}
+\item \texttt{03\_confusion\_matrix.pdf}; \texttt{04\_per\_class\_recall.pdf}
+\item \texttt{05\_efficiency\_scatter.pdf}; \texttt{06\_ablation.pdf}
+\item \texttt{07\_dekan\_ablation.pdf}; \texttt{08\_confusion\_matrix\_dekan.pdf}
+\item \texttt{09\_training\_curves\_dekan.pdf}
+\item \texttt{A1\_baseline\_confusion\_matrices.pdf} (Appendix~B)
+\item \texttt{A2\_all\_training\_curves.pdf} (Appendix~B)
+\end{itemize}
+
+% ── Appendix B ────────────────────────────────────────────────────────────────
+\newpage
+\section*{Appendix B: Extended Results}
+
+\subsection*{Full Per-Class Recall (Test Set, with TTA)}
+
+Table~\ref{tab:fullperclass} gives per-class recall for all five baselines plus
+four key variants (the pure-ViT ablation, the proposed lightweight hybrid, the
+linear-head DEKAN ablation, and the full DEKAN), allowing direct
+column-by-column comparison. The BMA row repeats the headline figure from
+Table~1 for reference. Proposed models and their ablation variants are marked
+$\dagger$.
+
+\begin{table}[H]
+\centering
+\caption{Per-class recall on the ISIC-2019 test set (8-view TTA, seed 42).
+$\dagger$ = proposed model or direct ablation variant.}
+\label{tab:fullperclass}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{lrrrrrrrrr}
+\toprule
+Class & ResNet-18 & MobileNetV2 & Eff-B0 & MViT-S & EFormer-L1
+      & ViT Only$\dagger$ & Hybrid$\dagger$ & DEKAN (Linear)$\dagger$ & DEKAN$\dagger$ \\
+\midrule
+MEL  & 0.231 & 0.511 & 0.594 & 0.447 & 0.572 & 0.464 & 0.518 & 0.600 & 0.611 \\
+NV   & 0.841 & 0.837 & 0.857 & 0.890 & 0.892 & 0.785 & 0.859 & 0.841 & 0.859 \\
+BCC  & 0.085 & 0.653 & 0.546 & 0.467 & 0.734 & 0.450 & 0.618 & 0.752 & 0.731 \\
+AK   & 0.523 & 0.323 & 0.348 & 0.452 & 0.252 & 0.439 & 0.587 & 0.439 & 0.368 \\
+BKL  & 0.057 & 0.446 & 0.366 & 0.587 & 0.523 & 0.250 & 0.632 & 0.583 & 0.622 \\
+DF   & 0.189 & 0.132 & 0.245 & 0.660 & 0.321 & 0.340 & 0.566 & 0.679 & 0.509 \\
+VASC & 0.216 & 0.706 & 0.843 & 0.882 & 0.882 & 0.843 & 0.863 & 0.843 & 0.922 \\
+SCC  & 0.554 & 0.182 & 0.157 & 0.430 & 0.240 & 0.355 & 0.223 & 0.471 & 0.529 \\
+\midrule
+\textbf{BMA} & 0.337 & 0.474 & 0.495 & 0.602 & 0.552 & 0.491 & 0.608 & 0.651 & 0.644 \\
+\bottomrule
+\end{tabular}
+}
+\end{table}
+
+\subsection*{Training Curves --- All Models}
+
+Figure~\ref{fig:allcurves} plots validation and training BMA over epochs for
+all seven main models. The dotted vertical line marks the best-validation
+checkpoint for each model.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{A2_all_training_curves.pdf}
+\caption{Validation BMA (solid) and training BMA (dashed) for all five baselines
+and both proposed models (seed 42). Proposed models are shown in colour
+(red = lightweight hybrid, green = DEKAN); baselines in blue.}
+\label{fig:allcurves}
+\end{figure}
+
+\subsection*{Confusion Matrices --- Baseline Models}
+
+Figure~\ref{fig:baselinecm} shows normalised confusion matrices for all five
+baseline models. All matrices use TTA predictions except ResNet-18, for which
+only the non-TTA confusion matrix was saved (consistent with the per-class
+recall numbers in Table~\ref{tab:fullperclass}).
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{A1_baseline_confusion_matrices.pdf}
+\caption{Confusion matrices (normalised by true class) for the five baseline
+models. The keratinocytic classes (AK, BKL, SCC) are the primary source of
+off-diagonal mass across all baselines.}
+\label{fig:baselinecm}
+\end{figure}

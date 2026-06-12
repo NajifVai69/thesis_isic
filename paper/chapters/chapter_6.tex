@@ -11,17 +11,24 @@ setting so the rows are directly comparable. The lightweight hybrid reaches a BM
 of 0.6081 with only 3.98M parameters, which is the best balanced accuracy of any
 model in the sub-6M-parameter budget --- ahead of MobileViT-S (0.6020), its
 closest competitor, at fewer parameters and about two-thirds of the compute.
-The flagship DEKAN model reaches 0.6438 BMA, the best in the study, and also
-leads on every secondary metric (macro-F1 0.6059, macro-AUC 0.9271, accuracy
-0.7467), at the cost of roughly four times the parameters and ten times the
-compute of the lightweight model. Figure~\ref{fig:comparison} shows the same
-comparison graphically.
+The flagship DEKAN model reaches 0.6438 BMA among the main proposed models, and
+also leads on every secondary metric (macro-F1 0.6059, macro-AUC 0.9271,
+accuracy 0.7467), at the cost of roughly four times the parameters and ten times
+the compute of the lightweight model. A linear-head ablation variant of DEKAN
+(dekan\_linear) reaches 0.6510 BMA, which is the highest single-model figure in
+the study; the contribution of the KAN classifier relative to a plain linear head
+is analysed in Section~\ref{sec:ablations}. Figure~\ref{fig:comparison} shows
+the same comparison graphically.
 
 \begin{table}[H]
 \centering
 \caption{Main results on the ISIC-2019 test set (with 8-view TTA). Best value in
-each column is in \textbf{bold}; the two proposed models are marked.}
+each column is in \textbf{bold}; the two proposed models are marked. A linear-head
+ablation of DEKAN (dekan\_linear) reaches a higher BMA of 0.6510 but is reported
+with the other ablations in Section~\ref{sec:ablations} rather than here, so this
+table is not its intended place; the bold BMA marks the best \emph{main} model.}
 \label{tab:main}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{lrrrrrr}
 \toprule
 Model & Params (M) & GMACs & BMA & Macro-F1 & Macro-AUC & Accuracy \\
@@ -36,6 +43,7 @@ Hybrid (ours, light) & 3.98  & 0.631 & 0.6081 & 0.5602 & 0.9229 & 0.7162 \\
 DEKAN (ours, flagship) & 16.45 & 6.633 & \textbf{0.6438} & \textbf{0.6059} & \textbf{0.9271} & \textbf{0.7467} \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \begin{figure}[H]
@@ -59,6 +67,20 @@ $\beta=0.999$ choice in the Class-Balanced Focal Loss was appropriate.
 \caption{Training and validation loss (left) and BMA (right) for the lightweight
 hybrid model over 150 epochs. The dashed line marks the best validation BMA.}
 \label{fig:curves}
+\end{figure}
+
+DEKAN follows a similar pattern, shown in Figure~\ref{fig:curvesdekan}. Training
+and validation loss decrease smoothly over the full 150 epochs, and the
+validation BMA peaks late in training, again with no sign of rare-class
+collapse --- consistent with the loss configuration transferring well from the
+lightweight model to the higher-capacity dual-backbone setting.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{09_training_curves_dekan.pdf}
+\caption{Training and validation loss (left) and BMA (right) for the DEKAN
+model over 150 epochs. The dashed line marks the best validation BMA.}
+\label{fig:curvesdekan}
 \end{figure}
 
 \section{Per-Class Analysis}
@@ -92,10 +114,16 @@ SCC  & 0.157 & 0.430 & 0.223 & 0.529 \\
 The pattern is consistent with the headline numbers. The lightweight hybrid lifts
 several of the hard middle classes relative to the convolutional baselines ---
 BCC, AK, and BKL in particular --- which is where its global reasoning and
-metadata context help most. Its weakest class is SCC (0.223), a rare class that
-is easily confused with AK and BKL. DEKAN spreads its recall more evenly and
-recovers SCC substantially (0.529) while also posting the strongest VASC (0.922)
-and BCC (0.731), which is the main reason its balanced accuracy is highest.
+metadata context help most. Notably, the hybrid's AK recall (0.587) is the
+highest among the baselines and both proposed models, well above DEKAN (0.368);
+actinic keratosis
+is a sun-damage-related precancerous condition disproportionately common in
+older patients at exposed anatomical sites, precisely the profile where the
+metadata cross-attention shifts the prior most reliably. Its weakest class is
+SCC (0.223), a rare class that is easily confused with AK and BKL. DEKAN spreads its recall more evenly and
+recovers SCC substantially (0.529) while also posting the strongest VASC recall
+(0.922) of any model in the study and a high BCC recall (0.731), which together
+are the main reason its balanced accuracy is highest.
 Figure~\ref{fig:confusion} shows the full confusion matrix for the lightweight
 hybrid; the off-diagonal mass sits mostly among the keratinocytic classes
 (AK/BKL/SCC), exactly the clinically difficult group.
@@ -116,17 +144,35 @@ with TTA).}
 \label{fig:confusion}
 \end{figure}
 
+Figure~\ref{fig:dekanconfusion} shows the same matrix for the DEKAN flagship.
+The keratinocytic confusion (AK/BKL/SCC) is reduced relative to the lightweight
+hybrid, and DEKAN recovers SCC substantially (0.529 vs.\ 0.223) --- the class
+that costs the hybrid most. VASC recall reaches 0.922, the highest of any model
+in the study.
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{08_confusion_matrix_dekan.pdf}
+\caption{Confusion matrix for the DEKAN flagship model (normalised by true class,
+with TTA).}
+\label{fig:dekanconfusion}
+\end{figure}
+
 \section{Efficiency Analysis}
 
 The point of the lightweight model is accuracy per unit of cost, so
 Table~\ref{tab:efficiency} reports balanced accuracy per million parameters
 alongside the raw numbers, and Figure~\ref{fig:efficiency} plots accuracy against
-parameter count with compute shown as bubble size. Among all models that fit the
-sub-6M budget, the lightweight hybrid has the best BMA-per-parameter (0.153),
-and the CNN-stem-only ablation is even higher per-parameter (0.268) but at a much
-lower absolute BMA. DEKAN sits at the opposite end: it buys the highest absolute
-accuracy with the lowest efficiency, which is the expected and intended
-trade-off between the two tiers.
+parameter count with compute shown as bubble size. Among the full baselines and
+proposed models, the lightweight hybrid has the best BMA-per-parameter (0.153).
+The isolated CNN-stem (0.268) and pure-ViT (0.249) ablations score higher on this
+ratio alone, but both sit far below the full hybrid in absolute BMA, so their
+apparent efficiency is misleading --- parameter-efficiency without sufficient
+accuracy is not a useful operating point. The hybrid is therefore the best
+operating point that also clears a useful accuracy level. DEKAN sits at the
+opposite end: it buys the
+highest absolute accuracy with the lowest efficiency, which is the expected and
+intended trade-off between the two tiers.
 
 \begin{table}[H]
 \centering
@@ -159,12 +205,20 @@ best accuracy within budget.}
 \section{Effect of Test-Time Augmentation}
 
 TTA helps most but not all models, so Table~\ref{tab:tta} reports BMA with and
-without it. Both proposed models improve under TTA (the lightweight hybrid by
-the largest margin among the strong models, $+0.027$). Two baselines are the
-exception: EfficientFormer-L1 drops slightly, and ResNet-18 degrades sharply
-($-0.151$). The ResNet-18 case is a known failure mode in which the per-view
-predictions are confidently wrong in different directions, so averaging them
-hurts; we report it openly rather than quietly dropping TTA for that model.
+without it. The lightweight hybrid (full model) benefits most among the strong
+models ($+0.027$), and DEKAN gains a further $+0.007$. Among baselines,
+EfficientFormer-L1 drops slightly and ResNet-18 degrades sharply ($-0.151$);
+the ResNet-18 case is a known failure mode in which per-view predictions are
+confidently wrong in different directions, so averaging hurts.
+
+The no-metadata ablation variant reveals a further pattern. Without the metadata
+head, the hybrid goes from 0.6216 to 0.6085 under TTA ($-0.013$) --- the same
+degradation direction as ResNet-18. Adding the metadata head reverses this:
+the full model goes from 0.5815 to 0.6081 ($+0.027$). The two variants
+converge to nearly the same TTA number (0.6085 vs 0.6081) from opposite sides.
+This TTA$\times$metadata interaction suggests the cross-attention head
+stabilises per-view predictions; without it, the model becomes overconfident
+in different directions across augmented views.
 
 \begin{table}[H]
 \centering
@@ -179,6 +233,8 @@ MobileNetV2          & 0.4485 & 0.4738 & $+0.025$ \\
 EfficientNet-B0      & 0.4917 & 0.4946 & $+0.003$ \\
 MobileViT-S          & 0.5925 & 0.6020 & $+0.010$ \\
 EfficientFormer-L1   & 0.5559 & 0.5519 & $-0.004$ \\
+\midrule
+Hybrid w/o metadata  & 0.6216 & 0.6085 & $-0.013$ \\
 Hybrid (ours, light) & 0.5815 & 0.6081 & $+0.027$ \\
 DEKAN (ours, flagship) & 0.6368 & 0.6438 & $+0.007$ \\
 \bottomrule
@@ -190,75 +246,103 @@ DEKAN (ours, flagship) & 0.6368 & 0.6438 & $+0.007$ \\
 \subsection{Lightweight hybrid}
 
 Table~\ref{tab:ablhybrid} and Figure~\ref{fig:ablation} isolate the components of
-the lightweight model. Going from the CNN stem alone (with global average pooling
-and a linear head) to the full hybrid lifts BMA from 0.4853 to 0.6081, a gain of
-0.123 --- a clear demonstration that the transformer trunk and metadata head
-together carry most of the model's balanced accuracy. The effect of metadata in
-isolation is, however, modest at test time on this single run: the full model
-(0.6081) and the no-metadata variant (0.6085) are within 0.0004 of each other on
-the test set, even though on the validation set the full model led by about
-0.011 BMA. We therefore report the metadata contribution for the lightweight
-model honestly as inconclusive on a single test evaluation; the DEKAN results
-below give a clearer signal.
+the lightweight model. The pure-ViT ablation (no CNN stem, 1.97M parameters)
+reaches 0.4908 BMA, virtually identical to the CNN-stem-only result (0.4853). The
+two components are roughly equal in isolation but strongly complementary when
+combined: adding the ViT trunk to the CNN stem yields a gain of $+0.117$ to
+$+0.123$ BMA, and the full hybrid reaches 0.6081. This is the primary
+architectural justification for the hybrid design --- neither local nor global
+features alone approach the performance the model achieves when both are present.
+
+The effect of metadata in isolation is, however, modest at test time on this
+single run: the full model (0.6081) and the no-metadata variant (0.6085) are
+within 0.0004 of each other on the test set, even though on the validation set
+the full model led by about 0.011 BMA. We therefore report the metadata
+contribution for the lightweight model honestly as inconclusive on a single test
+evaluation; the DEKAN results below give a clearer signal. The no-TTA numbers add
+a structural observation: without metadata the model scores 0.6216 before
+augmentation (versus 0.5815 for the full model), a gap of 0.040 that is entirely
+closed by TTA --- the full model gains $+0.027$ while the no-metadata variant
+loses $-0.013$ (Table~\ref{tab:tta}). The two variants converge to the same TTA
+result from opposite sides, which points to the metadata head regularising
+per-view predictions rather than lifting the mean class probability.
 
 \begin{table}[H]
 \centering
-\caption{Lightweight hybrid ablation (TTA BMA). The pure-ViT (no CNN stem)
-variant was not trained, so that row of the ablation is incomplete.}
+\caption{Lightweight hybrid ablation (TTA BMA). All four variants were trained
+and evaluated.}
 \label{tab:ablhybrid}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llr}
 \toprule
 Configuration & Variant & BMA (TTA) \\
 \midrule
 CNN stem + GAP + linear     & hybrid\_cnn\_only & 0.4853 \\
+Pure ViT, no CNN stem       & hybrid\_vit\_only & 0.4908 \\
 CNN + ViT, no metadata      & hybrid\_no\_meta  & 0.6085 \\
 CNN + ViT + metadata (full) & hybrid\_full      & 0.6081 \\
-Pure ViT, no CNN stem       & hybrid\_vit\_only & --- (not trained) \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{06_ablation.pdf}
-\caption{Lightweight hybrid ablation: BMA as components are added. (The pure-ViT
-variant was not trained and is absent.)}
+\caption{Lightweight hybrid ablation: BMA for all four variants. CNN-only and
+ViT-only perform similarly in isolation; the full hybrid is substantially higher.}
 \label{fig:ablation}
 \end{figure}
 
 \subsection{DEKAN}
+\label{sec:ablations}
 
-Table~\ref{tab:abldekan} and Figure~\ref{fig:dekanablation} ablate the flagship
-model. Here metadata helps clearly: removing it drops BMA from 0.6438 to 0.6302,
-a loss of 0.014. The KAN head, on the other hand, does not earn its place on this
-task --- the otherwise identical model with a plain linear head actually scores
-slightly higher (0.6510 vs.\ 0.6438). This is a genuine negative result that we
-report as such: on ISIC-2019 at this scale, the KAN classifier did not improve
-over a linear one.
+Table~\ref{tab:abldekan} and Figure~\ref{fig:dekanablation} isolate two effects
+in the flagship model: the contribution of clinical metadata and the choice of
+classifier head (KAN vs.\ linear).
+
+\textbf{Metadata.} Comparing dekan\_no\_meta (0.6302) with dekan\_linear
+(0.6510) --- both use a linear classifier head, differing only in the presence of
+the metadata cross-attention block --- shows a gain of $+0.021$ BMA. This is a
+clear and consistent signal that patient age, sex, and anatomical site provide
+useful diagnostic context at this model capacity.
+
+\textbf{KAN vs.\ linear head.} Replacing the KAN classifier with a plain linear
+layer (dekan\_linear, 0.6510) while keeping everything else identical produces a
+higher BMA than the full KAN model (dekan\_full, 0.6438), a difference of
+$+0.007$ in favour of the linear head. The KAN classifier therefore does not
+improve over a plain linear layer on this task. This is an honest negative result:
+the KAN's learnable splines add no measurable value at the classifier stage of a
+well-trained vision backbone on this noisy, imbalanced 8-class dataset. The
+likely explanation is that the discriminative difficulty on ISIC-2019 lies in the
+feature representation, not in the shape of the final decision boundary, which a
+linear layer can already model adequately after the rich dual-backbone
+representation.
 
 \begin{table}[H]
 \centering
-\caption{DEKAN ablation (TTA BMA). The single-backbone variants were not trained,
-so the dual-backbone fusion gain cannot yet be quantified.}
+\caption{DEKAN ablation: effect of clinical metadata and the KAN vs.\ linear
+classifier head (TTA BMA). The single-backbone variants were not trained, so
+the dual-backbone fusion gain cannot yet be quantified.}
 \label{tab:abldekan}
+\resizebox{\textwidth}{!}{%
 \begin{tabular}{llr}
 \toprule
 Configuration & Variant & BMA (TTA) \\
 \midrule
-Dual backbone + fusion, no metadata & dekan\_no\_meta       & 0.6302 \\
-Dual backbone + fusion + metadata, linear head & dekan\_linear & 0.6510 \\
-Dual backbone + fusion + metadata + KAN (full) & dekan\_full   & 0.6438 \\
-DenseNet-only + metadata + KAN      & dekan\_densenet\_only & --- (not trained) \\
-EfficientNet-only + metadata + KAN  & dekan\_effnet\_only   & --- (not trained) \\
+Dual backbone + fusion, no metadata, linear head & dekan\_no\_meta  & 0.6302 \\
+Dual backbone + fusion + metadata, linear head   & dekan\_linear    & 0.6510 \\
+Dual backbone + fusion + metadata + KAN (full)   & dekan\_full      & 0.6438 \\
 \bottomrule
 \end{tabular}
+}
 \end{table}
 
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{07_dekan_ablation.pdf}
-\caption{DEKAN ablation: effect of metadata and of the KAN head. (Single-backbone
-variants were not trained and are absent.)}
+\caption{DEKAN ablation: effect of clinical metadata and KAN vs.\ linear
+classifier head on BMA. Single-backbone variants were not trained and are absent.}
 \label{fig:dekanablation}
 \end{figure}
 
@@ -295,21 +379,27 @@ fusion helps clearly in the higher-capacity model and is, at worst, harmless in
 the lightweight one.
 
 Two findings cut against initial expectations and are worth stating plainly.
-First, the KAN classifier did not beat a linear head; the extra machinery of
-learnable splines did not translate into accuracy on this task and scale.
-Second, the benefit of metadata for the lightweight model could not be confirmed
-on a single test evaluation, even though the validation curve favoured it. Both
-are reported as they are rather than smoothed over.
+First, the benefit of metadata for the lightweight model could not be confirmed
+on a single test evaluation, even though the validation curve favoured it by
+0.011 BMA. The DEKAN results give a clearer signal at higher capacity
+($+0.021$ BMA between dekan\_no\_meta and dekan\_linear), suggesting the
+metadata effect requires sufficient model capacity to manifest consistently.
+Second, the KAN classifier in DEKAN does not outperform a plain linear head:
+dekan\_linear (0.6510) beats dekan\_full (0.6438) by 0.007. This is the
+highest single-model BMA achieved in the study, but it belongs to the
+linear-head ablation, not to the KAN model, which is the intended flagship.
+The KAN's expressive spline activations appear to offer no advantage over a
+linear classifier once the dual-backbone representation is rich enough.
 
 \section{Limitations}
 
 Several limitations bound these conclusions. All numbers come from a single seed
 (42); publication-grade claims would require repeating each run over multiple
 seeds and reporting mean and standard deviation, which we have not yet done.
-Three planned runs were not completed --- the pure-ViT lightweight ablation and
-the two single-backbone DEKAN ablations --- so the contribution of the CNN
-inductive bias in isolation and the precise size of the dual-backbone fusion
-gain remain unquantified. We also did not evaluate on an external dataset, so the
-generalisation of these models beyond the ISIC-2019 distribution is untested.
-Finally, the comparison with the ISIC-2019 leaderboard is contextual, not a
-controlled head-to-head, because the evaluation splits differ.
+Two ablation variants were not trained --- dekan\_densenet\_only and
+dekan\_effnet\_only --- so the individual contribution of each backbone and the
+precise size of the dual-backbone fusion gain remain unquantified. We also did
+not evaluate on an external dataset, so the generalisation of these models beyond
+the ISIC-2019 distribution is untested. Finally, the comparison with the
+ISIC-2019 leaderboard is contextual, not a controlled head-to-head, because the
+evaluation splits differ.

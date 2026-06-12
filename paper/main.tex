@@ -8,7 +8,7 @@
 %   Thesis Template verbatim. Only the academic content has changed.
 %*******************************************************************
 
-\documentclass[Times,12pt,oneside,openany,print,index]{report}
+\documentclass[12pt,oneside,openany]{report}
 \usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}
 \usepackage[english]{babel}
 \usepackage[utf8]{inputenc}
@@ -18,6 +18,7 @@
 \usepackage{booktabs} % professional-quality tables (\toprule, \midrule, \bottomrule)
 \usepackage{multirow}
 \usepackage{siunitx}  % numeric column alignment
+\usepackage{microtype}
 \pagestyle{plain} % Just a plain page number.
 
 \usepackage{graphicx} % to use the graphicx package
@@ -44,6 +45,7 @@
 
 \setlength{\parindent}{0em} % Control Indentation of paragraphs
 \setlength{\parskip}{0.6em}
+\emergencystretch=3em
 
 \usepackage{nomencl} % nomenclature package
 \renewcommand{\nompreamble}{The next list describes several symbols \& abbreviation that will be later used within the body of the document}
@@ -141,6 +143,7 @@
 \newpage
 \phantomsection
 \addcontentsline{toc}{chapter}{Appendix A: Reproducibility}
+\addcontentsline{toc}{chapter}{Appendix B: Extended Results}
 \input{appendix/appendix_1}
 
 \end{document}

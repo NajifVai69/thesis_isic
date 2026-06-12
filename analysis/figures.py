@@ -17,6 +17,9 @@ Outputs written to figures/:
     04_per_class_recall.pdf/png     per-class recall: ours vs best baseline
     05_efficiency_scatter.pdf/png   params vs BMA (efficiency claim)
     06_ablation.pdf/png             ablation bar chart
+    07_dekan_ablation.pdf/png       DEKAN ablation bar chart
+    08_confusion_matrix_dekan.pdf/png  publication-quality confusion matrix for DEKAN (TTA)
+    09_training_curves_dekan.pdf/png  loss + BMA over epochs (dekan_full)
     summary_table.csv               full results table for LaTeX
 
 Run `python -m training.eval --model <name> --seed 42` for each model first.
@@ -168,46 +171,50 @@ def load_train_log(model: str, seed: int) -> pd.DataFrame | None:
     path = RESULTS_DIR / model / f"seed{seed}" / "logs" / "train_log.csv"
     if not path.exists():
         return None
-    return pd.read_csv(path)
+    df = pd.read_csv(path)
+    # Resumed runs can leave stale rows from earlier attempts with overlapping
+    # epoch numbers; keep the last (most recent) row per epoch and re-sort.
+    df = df.drop_duplicates(subset="epoch", keep="last").sort_values("epoch")
+    return df.reset_index(drop=True)
 
 
 # ── Figure 1: Training curves ─────────────────────────────────────────────────
 
-def fig_training_curves(seed: int, model: str = "hybrid_full") -> None:
+def fig_training_curves(seed: int, model: str = "hybrid_full", out_name: str = "01_training_curves") -> None:
     df = load_train_log(model, seed)
     if df is None:
         print(f"[skip] training curves — no log found for {model} seed{seed}")
         return
 
-    fig, axes = plt.subplots(1, 2, figsize=(10, 3.8))
+    fig, axes = plt.subplots(1, 2, figsize=(10, 4.2))
     label = MODEL_LABELS.get(model, model)
 
     # Loss
     ax = axes[0]
-    ax.plot(df["epoch"], df["train_loss"], color="#4C72B0", label="Train", linewidth=1.5)
-    ax.plot(df["epoch"], df["val_loss"],   color="#DD3333", label="Val",   linewidth=1.5)
+    line_train, = ax.plot(df["epoch"], df["train_loss"], color="#4C72B0", label="Train", linewidth=1.5)
+    line_val,   = ax.plot(df["epoch"], df["val_loss"],   color="#DD3333", label="Val",   linewidth=1.5)
     ax.set_xlabel("Epoch")
     ax.set_ylabel("CB-Focal Loss")
     ax.set_title("Training & Validation Loss")
-    ax.legend()
 
     # BMA
     ax = axes[1]
-    ax.plot(df["epoch"], df["train_bma"], color="#4C72B0", label="Train", linewidth=1.5)
-    ax.plot(df["epoch"], df["val_bma"],   color="#DD3333", label="Val",   linewidth=1.5)
+    ax.plot(df["epoch"], df["train_bma"], color="#4C72B0", linewidth=1.5)
+    ax.plot(df["epoch"], df["val_bma"],   color="#DD3333", linewidth=1.5)
     best_ep  = df.loc[df["val_bma"].idxmax(), "epoch"]
     best_bma = df["val_bma"].max()
-    ax.axvline(best_ep, color="gray", linestyle="--", linewidth=1.0, alpha=0.7,
-               label=f"Best val BMA={best_bma:.4f} (ep {int(best_ep)})")
+    line_best = ax.axvline(best_ep, color="gray", linestyle="--", linewidth=1.0, alpha=0.7,
+                            label=f"Best val BMA={best_bma:.4f} (ep {int(best_ep)})")
     ax.set_xlabel("Epoch")
     ax.set_ylabel("Balanced Multi-class Accuracy (BMA)")
     ax.set_title("Balanced Multi-class Accuracy")
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
-    ax.legend(loc="upper left")
 
     fig.suptitle(f"{label}  —  Training Curves (seed {seed})", fontsize=12, fontweight="bold")
-    plt.tight_layout()
-    savefig(fig, "01_training_curves")
+    fig.legend(handles=[line_train, line_val, line_best], loc="lower center",
+               ncol=3, frameon=True, bbox_to_anchor=(0.5, -0.02))
+    plt.tight_layout(rect=[0, 0.08, 1, 0.95])
+    savefig(fig, out_name)
     plt.close(fig)
 
 
@@ -223,12 +230,15 @@ def fig_model_comparison(seed: int) -> None:
         if base is None:
             print(f"[skip]  {m} — no eval results found")
             continue
+        # Secondary metrics (F1/AUC) are reported at the TTA setting to match the
+        # paper's main table; fall back to no-TTA only if a TTA file is missing.
+        sec = tta if tta else base
         rows.append({
             "model":    m,
             "label":    MODEL_LABELS.get(m, m),
             "bma":      base.get("bma", 0),
-            "f1":       base.get("macro_f1", 0),
-            "auc":      base.get("macro_auc", 0),
+            "f1":       sec.get("macro_f1", 0),
+            "auc":      sec.get("macro_auc", 0),
             "bma_tta":  tta.get("bma", 0) if tta else 0,
             "f1_tta":   tta.get("macro_f1", 0) if tta else 0,
         })
@@ -248,7 +258,7 @@ def fig_model_comparison(seed: int) -> None:
         return C_BASELINE
     colors = [_bar_color(m) for m in df["model"]]
 
-    fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
+    fig, axes = plt.subplots(1, 2, figsize=(11, 5.0))
 
     # ── Left: BMA (no TTA) + BMA (TTA) ─────────────────────────────────────
     ax = axes[0]
@@ -260,7 +270,7 @@ def fig_model_comparison(seed: int) -> None:
     ax.set_xticklabels(df["label"], rotation=30, ha="right", fontsize=9)
     ax.set_ylabel("Balanced Multi-class Accuracy (BMA)")
     ax.set_title("BMA Comparison")
-    ax.set_ylim(0, min(1.0, df[["bma","bma_tta"]].max().max() * 1.18))
+    ax.set_ylim(0, min(1.0, df[["bma","bma_tta"]].max().max() * 1.22))
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
 
     # Value labels on bars
@@ -270,12 +280,10 @@ def fig_model_comparison(seed: int) -> None:
             ax.text(bar.get_x() + bar.get_width()/2, h + 0.005,
                     f"{h:.3f}", ha="center", va="bottom", fontsize=7.5, fontweight="bold")
 
-    # Legend patches
+    # Legend patches (collected for a shared legend below the figure)
     baseline_patch = mpatches.Patch(color=C_BASELINE, alpha=0.9, label="Baseline")
     proposed_patch = mpatches.Patch(color=C_PROPOSED, alpha=0.9, label="Ours (Hybrid, lightweight)")
     dekan_patch    = mpatches.Patch(color=C_DEKAN,    alpha=0.9, label="Ours (DEKAN, flagship)")
-    tta_patch      = mpatches.Patch(color="gray",     alpha=0.55, label="+ TTA")
-    ax.legend(handles=[baseline_patch, proposed_patch, dekan_patch, tta_patch], loc="upper left")
 
     # ── Right: Macro-F1 and Macro-AUC ───────────────────────────────────────
     ax = axes[1]
@@ -285,17 +293,17 @@ def fig_model_comparison(seed: int) -> None:
     ax.set_xticks(x)
     ax.set_xticklabels(df["label"], rotation=30, ha="right", fontsize=9)
     ax.set_ylabel("Score")
-    ax.set_title("Macro-F1 and Macro-AUC")
+    ax.set_title("Macro-F1 and Macro-AUC (with TTA)")
     ax.set_ylim(0, 1.0)
     ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
 
-    f1_patch  = mpatches.Patch(color="steelblue", alpha=0.9,  label="Macro-F1")
-    auc_patch = mpatches.Patch(color="steelblue", alpha=0.55, label="Macro-AUC")
-    ax.legend(handles=[baseline_patch, proposed_patch, dekan_patch, f1_patch, auc_patch],
-              loc="upper left")
+    f1_patch  = mpatches.Patch(color="steelblue", alpha=0.9,  label="Macro-F1 / BMA (no TTA)")
+    auc_patch = mpatches.Patch(color="steelblue", alpha=0.55, label="Macro-AUC / BMA (+TTA)")
 
     fig.suptitle("Model Comparison on ISIC-2019 Test Set", fontsize=12, fontweight="bold")
-    plt.tight_layout()
+    fig.legend(handles=[baseline_patch, proposed_patch, dekan_patch, f1_patch, auc_patch],
+               loc="lower center", ncol=3, frameon=True, bbox_to_anchor=(0.5, -0.04))
+    plt.tight_layout(rect=[0, 0.13, 1, 0.94])
     savefig(fig, "02_model_comparison")
     plt.close(fig)
 
@@ -521,7 +529,7 @@ def fig_ablation(seed: int) -> None:
                     f"{h:.3f}", ha="center", va="bottom", fontsize=8)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(df["label"], rotation=15, ha="right")
+    ax.set_xticklabels(df["label"], rotation=0, ha="center")
     ax.set_ylabel("Balanced Multi-class Accuracy (BMA)")
     ax.set_title("Ablation Study — Impact of Each Component", fontweight="bold")
     top = df[["bma","bma_tta"]].max().max()
@@ -597,6 +605,134 @@ def fig_dekan_ablation(seed: int) -> None:
     plt.close(fig)
 
 
+# ── Figure 8: DEKAN confusion matrix ─────────────────────────────────────────
+
+def fig_confusion_matrix_dekan(seed: int) -> None:
+    cm = load_conf_matrix("dekan_full", seed, tta=True)
+    if cm is None:
+        print("[skip] DEKAN confusion matrix — no conf_matrix_tta.npy for dekan_full")
+        return
+
+    fig, ax = plt.subplots(figsize=(8, 7))
+    sns.heatmap(
+        cm, annot=False, cmap="Greens", vmin=0.0, vmax=1.0,
+        ax=ax, cbar=True, linewidths=0.4, linecolor="white",
+        xticklabels=CLASSES, yticklabels=CLASSES,
+    )
+    for i in range(len(CLASSES)):
+        for j in range(len(CLASSES)):
+            val = cm[i, j]
+            color = "white" if val > 0.5 else "black"
+            weight = "bold" if i == j else "normal"
+            ax.text(j + 0.5, i + 0.5, f"{val:.2f}",
+                    ha="center", va="center",
+                    fontsize=9, color=color, fontweight=weight)
+    ax.set_xlabel("Predicted class", fontsize=11)
+    ax.set_ylabel("True class",      fontsize=11)
+    ax.set_title(
+        "Confusion Matrix (normalised by true class)\nDEKAN  —  seed 42  +TTA",
+        fontsize=12, fontweight="bold",
+    )
+    plt.tight_layout()
+    savefig(fig, "08_confusion_matrix_dekan")
+    plt.close(fig)
+
+
+# ── Figure A1: Appendix — baseline confusion matrices grid ───────────────────
+
+def fig_appendix_confusion_matrices(seed: int) -> None:
+    """2×3 grid of confusion matrices for the five baseline models."""
+    ncols, nrows = 3, 2
+    fig, axes = plt.subplots(nrows, ncols, figsize=(15, 10))
+
+    for idx, model in enumerate(BASELINE_MODELS):
+        row, col = divmod(idx, ncols)
+        ax = axes[row, col]
+        cm = load_conf_matrix(model, seed, tta=True)
+        if cm is None:
+            ax.set_visible(False)
+            continue
+        sns.heatmap(
+            cm, annot=False, cmap="Blues", vmin=0.0, vmax=1.0,
+            ax=ax, cbar=False, linewidths=0.3, linecolor="white",
+            xticklabels=CLASSES, yticklabels=CLASSES,
+        )
+        for i in range(len(CLASSES)):
+            for j in range(len(CLASSES)):
+                val = cm[i, j]
+                color = "white" if val > 0.5 else "black"
+                weight = "bold" if i == j else "normal"
+                ax.text(j + 0.5, i + 0.5, f"{val:.2f}",
+                        ha="center", va="center",
+                        fontsize=6.5, color=color, fontweight=weight)
+        ax.set_title(MODEL_LABELS.get(model, model), fontweight="bold", fontsize=10)
+        ax.set_xlabel("Predicted", fontsize=8)
+        ax.set_ylabel("True",      fontsize=8)
+        ax.tick_params(labelsize=7)
+
+    # Hide unused 6th slot
+    axes[1, 2].set_visible(False)
+
+    fig.suptitle(
+        "Confusion Matrices — Baseline Models\n"
+        "(normalised by true class, +TTA; ResNet-18 uses non-TTA matrix)",
+        fontsize=12, fontweight="bold",
+    )
+    plt.tight_layout()
+    savefig(fig, "A1_baseline_confusion_matrices")
+    plt.close(fig)
+
+
+# ── Figure A2: Appendix — training curves grid ───────────────────────────────
+
+def fig_appendix_training_curves(seed: int) -> None:
+    """4×2 grid of val-BMA training curves for all 7 main models."""
+    curve_models = BASELINE_MODELS + [PROPOSED_MODEL, DEKAN_MODEL]
+    ncols, nrows = 2, 4
+
+    fig, axes = plt.subplots(nrows, ncols, figsize=(12, 16))
+
+    for idx, model in enumerate(curve_models):
+        row, col = divmod(idx, ncols)
+        ax = axes[row, col]
+        df = load_train_log(model, seed)
+        label = MODEL_LABELS.get(model, model)
+        if df is None:
+            ax.text(0.5, 0.5, f"{label}\n(no log)", ha="center", va="center",
+                    transform=ax.transAxes, fontsize=9)
+            continue
+        if model == PROPOSED_MODEL:    color = C_PROPOSED
+        elif model == DEKAN_MODEL:     color = C_DEKAN
+        else:                          color = C_BASELINE
+
+        ax.plot(df["epoch"], df["val_bma"],   color=color,  linewidth=1.5, label="Val BMA")
+        ax.plot(df["epoch"], df["train_bma"], color=color,  linewidth=1.0,
+                alpha=0.45, linestyle="--", label="Train BMA")
+        best_ep  = df.loc[df["val_bma"].idxmax(), "epoch"]
+        best_bma = df["val_bma"].max()
+        ax.axvline(best_ep, color="gray", linestyle=":", linewidth=1.0, alpha=0.7)
+        ax.set_title(f"{label}  (best val={best_bma:.3f})", fontsize=9, fontweight="bold",
+                     color=color)
+        ax.set_xlabel("Epoch", fontsize=8)
+        ax.set_ylabel("BMA",   fontsize=8)
+        ax.tick_params(labelsize=7)
+        ax.yaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+        ax.legend(fontsize=7, loc="lower right")
+
+    # Hide unused 8th slot
+    row, col = divmod(len(curve_models), ncols)
+    axes[row, col].set_visible(False)
+
+    fig.suptitle(
+        "Training Curves — All Main Models  (BMA vs Epoch, seed 42)\n"
+        "Dashed = train BMA,  solid = val BMA,  dotted line = best val checkpoint",
+        fontsize=12, fontweight="bold",
+    )
+    plt.tight_layout()
+    savefig(fig, "A2_all_training_curves")
+    plt.close(fig)
+
+
 # ── Summary table (LaTeX-ready CSV) ───────────────────────────────────────────
 
 def export_summary_table(seed: int) -> None:
@@ -610,15 +746,18 @@ def export_summary_table(seed: int) -> None:
         if base is None:
             continue
         eff = EFFICIENCY.get(m, {})
+        # Secondary metrics (F1/AUC/Accuracy) at the TTA setting to match the
+        # paper's main table; fall back to no-TTA only if a TTA file is missing.
+        sec = tta if tta else base
         rows.append({
             "Model":        MODEL_LABELS.get(m, m),
             "Params (M)":   f"{eff.get('params', 0):.2f}",
             "GMACs":        f"{eff.get('gmac', 0):.3f}",
             "BMA":          f"{base.get('bma', 0):.4f}",
             "BMA+TTA":      f"{tta.get('bma', 0):.4f}" if tta else "—",
-            "Macro-F1":     f"{base.get('macro_f1', 0):.4f}",
-            "Macro-AUC":    f"{base.get('macro_auc', 0):.4f}",
-            "Accuracy":     f"{base.get('accuracy', 0):.4f}",
+            "Macro-F1":     f"{sec.get('macro_f1', 0):.4f}",
+            "Macro-AUC":    f"{sec.get('macro_auc', 0):.4f}",
+            "Accuracy":     f"{sec.get('accuracy', 0):.4f}",
         })
 
     if not rows:
@@ -658,13 +797,17 @@ def main():
     print(f"\nGenerating figures  seed={args.seed}  model={args.model}")
     print(f"Output directory: {FIGURES_DIR.resolve()}\n")
 
-    if should("1"): fig_training_curves(args.seed, args.model)
-    if should("2"): fig_model_comparison(args.seed)
-    if should("3"): fig_confusion_matrix(args.seed, args.model)
-    if should("4"): fig_per_class_recall(args.seed, args.model, args.baseline)
-    if should("5"): fig_efficiency_scatter(args.seed)
-    if should("6"): fig_ablation(args.seed)
-    if should("7"): fig_dekan_ablation(args.seed)
+    if should("1"):  fig_training_curves(args.seed, args.model)
+    if should("9"):  fig_training_curves(args.seed, "dekan_full", "09_training_curves_dekan")
+    if should("2"):  fig_model_comparison(args.seed)
+    if should("3"):  fig_confusion_matrix(args.seed, args.model)
+    if should("4"):  fig_per_class_recall(args.seed, args.model, args.baseline)
+    if should("5"):  fig_efficiency_scatter(args.seed)
+    if should("6"):  fig_ablation(args.seed)
+    if should("7"):  fig_dekan_ablation(args.seed)
+    if should("8"):  fig_confusion_matrix_dekan(args.seed)
+    if should("A1"): fig_appendix_confusion_matrices(args.seed)
+    if should("A2"): fig_appendix_training_curves(args.seed)
     export_summary_table(args.seed)
 
     print("\n[done] all figures written to figures/")

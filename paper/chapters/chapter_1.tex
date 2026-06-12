@@ -46,9 +46,12 @@ ISIC-2019 metadata, yet it is routinely discarded by classifiers that look only
 at pixels.
 
 Our study is driven by the belief that these two problems should be solved
-together rather than separately. We argue that a carefully designed lightweight
-hybrid, fed with the same contextual metadata a clinician uses, can match or
-beat much larger image-only baselines while staying small enough to deploy. We
+together rather than separately. We argue first that a carefully designed
+lightweight hybrid can match or beat much larger image-only baselines on
+balanced accuracy while staying small enough to deploy, and second that the
+clinical metadata a dermatologist already has on hand can be folded in at
+negligible cost as additional diagnostic context, handled so that missing
+fields are never imputed. We
 also recognise that not every deployment has the same constraints, so we deliver
 two models from one design philosophy: a genuinely compact model for
 constrained settings, and a higher-capacity model for situations where balanced
@@ -86,9 +89,9 @@ The objectives of this work are:
         baselines, under one identical loss, augmentation, and evaluation
         pipeline so that the comparison is fair.
   \item To quantify the contribution of each design choice (the CNN stem, the
-        transformer trunk, the metadata head, the dual-backbone fusion, and the
-        KAN head) through controlled ablations, and to report efficiency
-        alongside accuracy.
+        transformer trunk, the metadata head, and the dual-backbone fusion)
+        through controlled ablations, and to report efficiency alongside
+        accuracy.
 \end{enumerate}
 
 \section{Methodology in Brief}
