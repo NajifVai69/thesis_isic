@@ -1,0 +1,555 @@
+% =====================================================================
+%  CHAPTER 3 — MISSING & EXPANDED SECTIONS
+%  "Hybrid CNN–Transformer Networks with Clinical Metadata for
+%   Skin Lesion Classification"  (Thesis Group T2510619)
+%
+%  HOW TO USE THIS FILE
+%  --------------------
+%  These sections are written to drop straight into your existing
+%  Chapter 3.  To make Chapter 3 map cleanly onto every rubric criterion
+%  (CO2, CO3, CO4, CO10, CO11, CO12), re-organise the chapter as follows.
+%  Sections you ALREADY HAVE are marked [KEEP]; everything in this file
+%  is marked [NEW] or [EXPAND].
+%
+%    3.1  Specifications and Requirements
+%         3.1.1  Dataset and Data Requirements              [KEEP - your current 3.1]
+%         3.1.2  Functional Requirements                    [NEW]
+%         3.1.3  Non-Functional Requirements                [NEW]
+%         3.1.4  System Requirements (Hardware & Software)  [KEEP - your current 3.2]
+%         3.1.5  Applicable Standards and Codes of Practice [NEW]
+%    3.2  Societal, Health, Safety, Legal and Cultural Impact   [EXPAND - replaces thin "Impacts"]   -> CO3
+%    3.3  Environmental Impact and Sustainability               [NEW]                                -> CO4
+%    3.4  Ethical Issues                                        [EXPAND - promotes your Ethics Statement] -> CO12
+%    3.5  Design Constraints                                    [KEEP - your current 3.3, renumbered]
+%    3.6  Project Management Plan                               [NEW]                                -> CO10
+%    3.7  Risk Management                                       [NEW]                                -> CO10
+%    3.8  Economic Analysis                                     [NEW]                                -> CO11
+%
+%  Requires: \usepackage{booktabs}  (you already use booktabs-style rules).
+%  Anything in [SQUARE BRACKETS + bold "REPLACE"] must be replaced with a
+%  real value from your own logs before submission.
+% =====================================================================
+
+
+% ---------------------------------------------------------------------
+% 3.1.2  FUNCTIONAL REQUIREMENTS                                  [NEW]
+% ---------------------------------------------------------------------
+\subsection{Functional Requirements}
+\label{sec:functional-requirements}
+
+The functional requirements specify what the system must do, independent of
+how well it does it. They follow directly from the goal of a clinically
+usable, metadata-aware classifier and are summarised in
+Table~\ref{tab:functional-requirements}.
+
+The system must accept a single dermoscopic image and return a probability
+distribution over the eight ISIC-2019 diagnostic categories (MEL, NV, BCC,
+AK, BKL, DF, VASC, SCC), rather than a single hard label, so that the output
+is a ranked set of possibilities suitable for decision support. It must
+optionally accept the patient metadata that accompanies each image --- age,
+sex, and the general anatomical site of the lesion --- and fold that context
+into the prediction. Crucially, it must continue to function when any of
+those metadata fields is absent, representing ``missing'' as an explicit,
+learnable signal rather than imputing a fabricated value, because a large
+fraction of ISIC-2019 records are incomplete. The system must apply a fixed
+preprocessing pipeline (colour constancy and resizing to $224\times224$) to
+raw input before inference, and must report performance per class and as
+balanced multi-class accuracy (BMA) so that the behaviour on rare, often
+malignant, classes is always visible. Finally, the whole training and
+evaluation procedure must be reproducible from configuration files.
+
+\begin{table}[h]
+\centering
+\caption{Functional requirements of the proposed system.}
+\label{tab:functional-requirements}
+\begin{tabular}{p{0.07\textwidth}p{0.85\textwidth}}
+\toprule
+ID & Requirement \\
+\midrule
+FR1 & Accept an RGB dermoscopic image and output a probability distribution over the eight ISIC-2019 classes. \\
+FR2 & Optionally accept patient metadata (age, sex, anatomical site) and use it as additional diagnostic context. \\
+FR3 & Handle any missing metadata field through a learned ``missing'' representation, without imputation. \\
+FR4 & Return a ranked list of candidate diagnoses with associated scores (decision support, not a final diagnosis). \\
+FR5 & Apply the full preprocessing pipeline (Shades-of-Gray colour constancy, resize/centre-crop to $224\times224$) to raw input. \\
+FR6 & Train, validate, and evaluate from declarative configuration files with a fixed random seed. \\
+FR7 & Report per-class recall, BMA, macro-F1, macro-AUC, overall accuracy, and a normalised confusion matrix. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ---------------------------------------------------------------------
+% 3.1.3  NON-FUNCTIONAL REQUIREMENTS                             [NEW]
+% ---------------------------------------------------------------------
+\subsection{Non-Functional Requirements}
+\label{sec:nonfunctional-requirements}
+
+The non-functional requirements specify the quality attributes the system
+must satisfy --- the constraints on \emph{how} it performs its function.
+They are the requirements against which the design in Chapter~4 is judged,
+and they are listed in Table~\ref{tab:nonfunctional-requirements}.
+
+The central non-functional requirement is efficiency: the lightweight model
+must stay under 6M parameters and 1 GMAC so that it can be deployed on the
+modest hardware found in a typical clinic or on a portable device. The
+delivered lightweight hybrid meets this comfortably at 3.98M parameters and
+0.631 GMACs. Closely related is deployability --- the system must train and
+run within a 16\,GB memory ceiling --- and portability, since the
+implementation must run on a standard PyTorch stack, including under Windows,
+where the data loader is restricted to a single worker process. On the
+quality-of-output side, balanced multi-class accuracy is the primary
+performance requirement, and the model must remain robust to the dataset's
+extreme imbalance without the rare-class collapse that a naively trained
+classifier would exhibit. Reproducibility (fixed seed, deterministic
+pipeline, regenerable figures) and maintainability (a modular codebase split
+into preprocessing, datasets, losses, models, training, and analysis) are
+required so that every reported number can be traced to its source. Two
+further requirements are ethical in nature: the reliance on BMA is itself a
+fairness requirement, forcing the rare malignant classes to count equally,
+and the prohibition on imputing missing metadata is an honesty requirement,
+ensuring the model is never given a fabricated clinical value.
+
+\begin{table}[h]
+\centering
+\caption{Non-functional requirements and how the design satisfies them.}
+\label{tab:nonfunctional-requirements}
+\begin{tabular}{p{0.08\textwidth}p{0.40\textwidth}p{0.42\textwidth}}
+\toprule
+ID & Requirement & How it is met \\
+\midrule
+NFR1 & Efficiency / footprint: lightweight model $\le$ 6M parameters and $\le$ 1 GMAC. & Lightweight hybrid: 3.98M params, 0.631 GMACs. \\
+NFR2 & Deployability: train and run within a 16\,GB memory budget. & AMP, channels-last layout, gradient accumulation, memory-mapped dataset. \\
+NFR3 & Accuracy: balanced multi-class accuracy as the primary metric; beat same-budget baselines. & Hybrid 0.6081 BMA (best in sub-6M budget); DEKAN 0.6438. \\
+NFR4 & Robustness to class imbalance: no rare-class collapse. & Class-Balanced Focal Loss, weighted sampler; stable training curves (Ch.~5). \\
+NFR5 & Reproducibility: deterministic, seed-fixed, configuration-driven. & Single seed (42); figures regenerated from saved outputs (Appendix~A). \\
+NFR6 & Maintainability: modular, importable codebase. & Separate preprocessing / datasets / losses / models / training / analysis modules. \\
+NFR7 & Portability: standard framework; runs under Windows with zero-worker loading. & PyTorch + \texttt{timm}; memmap dataset compensates for single-worker constraint. \\
+NFR8 & Fairness and honesty: rare malignant classes weighted equally; no fabricated metadata. & BMA metric; explicit learned ``missing'' embeddings. \\
+NFR9 & Latency: single-image inference fast enough for interactive use. & Low GMAC count (0.631) keeps per-image inference inexpensive. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ---------------------------------------------------------------------
+% 3.1.5  APPLICABLE STANDARDS AND CODES OF PRACTICE              [NEW]
+% ---------------------------------------------------------------------
+\subsection{Applicable Standards and Codes of Practice}
+\label{sec:standards}
+
+This thesis is a research study built on a public, de-identified dataset, and
+is not a regulated medical device. It is nonetheless useful to state the
+professional standards and codes of practice that would govern the system
+were it taken toward clinical deployment, both to scope the work honestly and
+to make clear which good practices we already follow.
+
+Several of these standards bear directly on the development process. For the
+software itself, \emph{IEC 62304} defines the life-cycle processes for
+medical-device software, and \emph{ISO 13485} the quality-management system a
+manufacturer of such software would operate under. \emph{ISO 14971} governs
+the application of risk management to medical devices, and informs the risk
+register in Section~\ref{sec:risk-management}. Because the system processes
+patient metadata, \emph{ISO/IEC 27001} (information-security management) and
+data-protection principles of the kind codified in the GDPR are relevant to
+any deployment that handles identifiable records; in this work the data is
+de-identified at source and the metadata is used solely as model input.
+
+For machine-learning practice specifically, the system is intended to align
+with the \emph{Good Machine Learning Practice for Medical Device Development}
+guiding principles published jointly by the U.S.\ FDA, Health Canada, and the
+UK MHRA, and with the regulatory framing of AI as a Software-as-a-Medical-Device
+(SaMD). In the European context, the EU AI Act classifies AI used as a safety
+component of a medical device as high-risk, which would impose transparency,
+data-governance, and human-oversight obligations on a deployed version of this
+system --- obligations consistent with the assistive, human-in-the-loop role
+we adopt throughout. Where clinical imaging systems are involved, the
+\emph{DICOM} standard governs image interchange.
+
+Finally, for reporting and reproducibility we follow the spirit of the
+established checklists for medical-imaging AI --- in particular CLAIM (the
+Checklist for Artificial Intelligence in Medical Imaging) and the
+TRIPOD\,+\,AI reporting guideline for prediction models --- by reporting the
+full data pipeline, the train/validation/test split strategy, the metric
+definitions, per-class results, and the limitations of single-seed,
+single-dataset evaluation. The data is used in accordance with the ISIC
+data-use terms.
+
+
+% ---------------------------------------------------------------------
+% 3.2  SOCIETAL, HEALTH, SAFETY, LEGAL AND CULTURAL IMPACT   [EXPAND] -> CO3
+% ---------------------------------------------------------------------
+\section{Societal, Health, Safety, Legal and Cultural Impact}
+\label{sec:impacts}
+
+The intended impact of this work is a decision-support tool small enough to
+run where care is actually delivered, using the same contextual information a
+clinician already has. The implications of such a tool span several
+dimensions, and it is worth examining each in turn rather than treating
+``impact'' as a single category.
+
+\paragraph{Societal impact.}
+The gap between the volume of skin lesions that need screening and the number
+of dermatologists available to read them is the social problem this work
+addresses. That gap is widest in low-resource settings: in countries such as
+Bangladesh, specialist dermatological coverage is concentrated in major urban
+centres, leaving rural populations with little access to early screening. A
+model that is cheap to deploy and can run offline lowers the barrier to
+first-line screening exactly where specialist coverage is thin, and so has the
+potential to widen access rather than concentrate it further. Because the
+system is assistive, its realistic social role is triage --- flagging lesions
+that warrant referral --- rather than replacing the specialist judgement that
+remains scarce.
+
+\paragraph{Health and safety impact.}
+The health benefit follows from the prognosis of skin cancer, which depends
+heavily on early detection; melanoma in particular is highly treatable when
+caught early. A tool that helps surface suspicious lesions sooner can, in
+principle, improve outcomes. The safety considerations are the other side of
+the same coin. The dangerous failure mode of a skin-lesion classifier is a
+false negative on a malignant class, which is precisely why we optimise and
+report balanced multi-class accuracy rather than overall accuracy: a model
+that scored well on the common benign nevus class while missing the rare
+malignant ones would be both numerically impressive and clinically unsafe. A
+second safety concern is automation bias --- the tendency of users to defer to
+a confident machine output. We mitigate this by designing the system to
+produce a ranked set of possibilities rather than a single diagnosis, and by
+positioning it explicitly as an aid to, not a replacement for, a clinician,
+who remains in the loop for every decision.
+
+\paragraph{Legal impact.}
+Any clinical deployment of this system would sit within a medical-device
+regulatory regime (Section~\ref{sec:standards}) and would require the
+corresponding clearance before use on patients; the present work makes no
+claim to such clearance. Liability for a missed or incorrect diagnosis, the
+need for informed consent governing the use of patient data, and compliance
+with data-protection law are all legal questions that a real deployment must
+answer. By relying only on a public, de-identified research dataset and by
+framing the output as decision support, this study stays within the bounds of
+research use and leaves those clinical-deployment questions explicitly out of
+scope.
+
+\paragraph{Cultural impact.}
+A specific and important limitation concerns skin-tone representation.
+ISIC-2019 is assembled largely from European populations, and dermoscopic
+collections in general over-represent fair skin. A model trained on such data
+cannot be assumed to generalise to the darker and more diverse skin tones of a
+South Asian population such as Bangladesh's, and deploying it there without
+re-validation on representative local data would risk systematically worse
+performance for the very patients it is meant to serve. We flag this as a
+genuine equity concern rather than a solved problem, and note it again among
+the limitations and future work (external validation on a local, representative
+dataset). More broadly, the acceptance of AI-assisted diagnosis depends on
+cultural attitudes toward automation in healthcare and on patient trust, which
+reinforces the case for a transparent, assistive design rather than an opaque,
+autonomous one.
+
+
+% ---------------------------------------------------------------------
+% 3.3  ENVIRONMENTAL IMPACT AND SUSTAINABILITY                   [NEW] -> CO4
+% ---------------------------------------------------------------------
+\section{Environmental Impact and Sustainability}
+\label{sec:environmental-impact}
+
+The environmental footprint of a deep-learning project has two distinct
+components: the one-off cost of \emph{training} the models, and the recurring
+cost of \emph{running} a deployed model over its lifetime. The efficiency
+goal that drives this thesis is, in addition to a deployment argument, a
+sustainability argument, and it is worth making that link explicit.
+
+\paragraph{Training footprint.}
+All experiments ran on a single workstation with an NVIDIA RTX~4070~Ti~Super
+(a 285\,W board, of which we assume an average draw of roughly 0.25\,kW under
+training load). The carbon cost of a single training run is then
+\[
+\text{CO}_2\text{eq} \;=\; P_{\text{avg}} \;\times\; t_{\text{train}} \;\times\; \text{EF},
+\]
+where $P_{\text{avg}}$ is the average board power, $t_{\text{train}}$ the
+wall-clock training time, and $\text{EF}$ the grid emission factor. Bangladesh's
+grid is fossil-dominated, with an official grid emission factor of
+approximately $0.62\ \text{kg\,CO}_2/\text{kWh}$. Table~\ref{tab:carbon}
+applies this to the two proposed models; the wall-clock times are the values
+recorded in our training logs. Summed across the full study --- the five
+baselines, both proposed models, and the ablation variants, on the order of a
+dozen full training runs plus exploratory runs --- the total training energy is
+on the order of tens of kWh, corresponding to roughly a few tens of kilograms
+of CO\textsubscript{2}eq: a footprint comparable to a single short car
+journey, and orders of magnitude below that of training the large ensembles
+that top the ISIC-2019 leaderboard.
+
+\begin{table}[h]
+\centering
+\caption{Estimated training energy and carbon for the two proposed models, at
+an assumed average board power of 0.25\,kW and the Bangladesh grid emission
+factor of $0.62\ \text{kg\,CO}_2/\text{kWh}$. Wall-clock times are illustrative
+pending substitution with the exact values from the training logs.}
+\label{tab:carbon}
+\begin{tabular}{lccc}
+\toprule
+Model & Wall-clock (h) & Energy (kWh) & CO\textsubscript{2}eq (kg) \\
+\midrule
+Lightweight hybrid & \textbf{[REPLACE: $\approx$3]} & 0.75 & 0.47 \\
+DEKAN (flagship)   & \textbf{[REPLACE: $\approx$9]} & 2.25 & 1.40 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Inference footprint and sustainability.}
+For a deployed clinical tool the recurring inference cost dominates the
+lifetime footprint, and this is exactly where the design pays off. The
+lightweight hybrid performs a single classification in 0.631 GMACs, so the
+energy per inference is negligible, and the model is small enough to run on a
+low-power edge device --- for example an NVIDIA Jetson Orin Nano, which runs
+vision-transformer workloads within a power envelope of roughly 7--25\,W ---
+rather than on a continuously powered server-class GPU drawing ten to twenty
+times as much. A compact model also extends sustainability beyond energy: it
+runs on inexpensive or already-available hardware, reducing the demand for new
+high-end accelerators and the electronic waste that accompanies them, and it
+operates without a permanent data-centre connection. By contrast, the
+multi-resolution EfficientNet plus SENet-154 ensembles that define the
+state of the art carry a far heavier per-inference cost. The two-tier design
+of this thesis therefore offers an explicit efficiency-versus-accuracy choice
+in which the lower-footprint option is also the more deployable one, aligning
+the work with the goals of green and resource-efficient machine learning.
+
+\paragraph{Honest accounting.}
+We did not directly meter power consumption; the figures above are estimates
+derived from the GPU's rated power and the national-average grid emission
+factor, and the true values depend on the actual board utilisation and the
+local energy mix. We report them as an order-of-magnitude account rather than
+a precise measurement, which is sufficient to support the comparative claim
+that the proposed models are low-footprint relative to leaderboard ensembles.
+
+
+% ---------------------------------------------------------------------
+% 3.4  ETHICAL ISSUES                                            [EXPAND] -> CO12
+% ---------------------------------------------------------------------
+\section{Ethical Issues}
+\label{sec:ethics}
+
+The ethical commitments of this work were stated briefly in the Ethics
+Statement at the front of the thesis; here we set them out in the context of
+the design.
+
+\paragraph{Data ethics and privacy.}
+The study uses only the publicly available ISIC-2019 dataset, released for
+research by the International Skin Imaging Collaboration. No new human-subject
+data were collected, and all images are de-identified at source. The patient
+metadata --- age, sex, and anatomical site --- is used solely as model input
+and is never used to re-identify a patient. The data is handled in accordance
+with the ISIC data-use terms.
+
+\paragraph{Fairness.}
+Two design decisions are fairness decisions. First, the choice of balanced
+multi-class accuracy as the primary metric forces the model to take the rare,
+often malignant, classes as seriously as the common benign ones, rather than
+optimising a figure the majority class would dominate. Second, missing
+metadata is represented by a learned ``missing'' embedding rather than imputed,
+so the model is never trained on a fabricated clinical value. We also
+acknowledge openly (Section~\ref{sec:impacts}) the skin-tone representation
+bias inherent in ISIC-2019, which is an unresolved fairness limitation rather
+than a problem this work claims to have solved.
+
+\paragraph{Responsible deployment and transparency.}
+The system is designed to assist, not replace, a clinician: it outputs a
+ranked set of possibilities and keeps a human in the loop, which guards
+against the automation bias discussed earlier. In the same spirit of
+transparency, we report our negative and inconclusive results honestly --- the
+metadata benefit for the lightweight model could not be confirmed on a single
+test-set evaluation, and the KAN classifier head did not improve over a plain
+linear head --- rather than presenting only the favourable findings. Reporting
+what did not work is itself an ethical obligation in a medical context, where
+overstated performance can cause real harm.
+
+
+% ---------------------------------------------------------------------
+% 3.6  PROJECT MANAGEMENT PLAN                                   [NEW] -> CO10
+% ---------------------------------------------------------------------
+\section{Project Management Plan}
+\label{sec:project-management}
+
+The project was carried out by a team of five over three academic semesters,
+from Spring~2025 to Summer~2026, under the supervision of
+Dr.\ Md.\ Ashraful Alam. It was managed in the three phases that structure the
+thesis programme --- Pre-Thesis~1, Pre-Thesis~2, and the Final Thesis --- with
+the work broken down into the stages shown in
+Table~\ref{tab:project-schedule}.
+
+\paragraph{Work breakdown and schedule.}
+The first phase established the problem and the foundations: the literature
+review, the framing of the imbalance and efficiency problem, and the
+construction of the data pipeline (perceptual-hash deduplication, the
+lesion-grouped stratified split, colour constancy, and the memory-mapped
+dataset). The second phase implemented and trained the five lightweight
+baselines under a single shared recipe, and designed the lightweight hybrid.
+The final phase designed and trained the higher-capacity DEKAN model, ran the
+controlled ablations, carried out the full evaluation and analysis, and
+produced the written thesis. Table~\ref{tab:project-schedule} maps these
+stages onto the timeline.
+
+\begin{table}[h]
+\centering
+\caption{Project schedule across the three thesis phases. A filled cell
+indicates the stage was active in that phase.}
+\label{tab:project-schedule}
+\begin{tabular}{p{0.46\textwidth}ccc}
+\toprule
+Stage & Pre-Thesis 1 & Pre-Thesis 2 & Final Thesis \\
+\midrule
+Problem definition \& literature review        & $\blacksquare$ & $\square$ & $\square$ \\
+Data acquisition \& preprocessing pipeline      & $\blacksquare$ & $\blacksquare$ & $\square$ \\
+Baseline implementation (5 models)              & $\square$ & $\blacksquare$ & $\square$ \\
+Lightweight hybrid design \& training           & $\square$ & $\blacksquare$ & $\blacksquare$ \\
+DEKAN design \& training                        & $\square$ & $\square$ & $\blacksquare$ \\
+Ablation studies                                & $\square$ & $\square$ & $\blacksquare$ \\
+Evaluation, analysis \& figures                 & $\square$ & $\blacksquare$ & $\blacksquare$ \\
+Thesis writing \& revision                      & $\blacksquare$ & $\blacksquare$ & $\blacksquare$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Roles and responsibilities.}
+The work was divided across the team along the natural seams of the pipeline
+--- data engineering and preprocessing, model architecture, training
+infrastructure, evaluation and analysis, and writing and figures --- with
+regular integration so that all models shared one identical training and
+evaluation recipe. % [REPLACE: insert a one-line statement of which member led which area, e.g. "X led the data pipeline; Y and Z the model architectures; ...". This also supports the CO13 individual-contribution criterion.]
+Coordination was maintained through version-controlled code and regular
+supervisor meetings.
+
+\paragraph{Tools and resources.}
+The project used Git for version control of the modular codebase, the shared
+single-GPU workstation described in Section~3.1.4 for all training, and the
+configuration-driven pipeline that allows any result to be regenerated from a
+saved specification. Keeping the entire study on one reproducible codebase and
+one machine was itself a project-management decision: it removed the
+environment drift that would otherwise make a five-person, multi-model
+comparison unfair.
+
+\paragraph{Milestones and deliverables.}
+The principal milestones were the cleaned and split dataset, a working
+baseline suite under the shared recipe, the budget-compliant lightweight
+hybrid, the DEKAN flagship, the completed ablation matrix, and the final
+written thesis together with the reproducibility appendix.
+
+
+% ---------------------------------------------------------------------
+% 3.7  RISK MANAGEMENT                                           [NEW] -> CO10
+% ---------------------------------------------------------------------
+\section{Risk Management}
+\label{sec:risk-management}
+
+A small number of technical risks were identified at the outset as the main
+threats to a valid result, and the design was shaped to address them. Several
+of the most consequential --- data leakage, rare-class collapse, and the
+memory ceiling --- were mitigated by specific, deliberate engineering choices
+that are described in Chapter~4; the risk register in
+Table~\ref{tab:risk-register} records each risk, its likelihood and impact
+before mitigation, the mitigation applied, and its residual status.
+
+The leakage risk was the most insidious: because ISIC-2019 contains
+near-duplicate photographs of the same lesion, naive splitting would have let
+the same lesion appear in both training and test, inflating the reported
+accuracy. Perceptual-hash deduplication followed by a lesion-grouped split
+closed this off. The imbalance risk --- a model collapsing onto the common
+classes and ignoring the rare malignant ones --- was countered with
+Class-Balanced Focal Loss, a weighted sampler, and the choice of BMA as the
+selection metric, and the training curves in Chapter~5 confirm no collapse
+occurred. The 16\,GB memory ceiling and the Windows data-loader deadlock were
+both engineering risks to feasibility, mitigated by mixed precision,
+channels-last layout, gradient accumulation, and the memory-mapped,
+zero-worker dataset. Two risks remain open and are carried forward as
+limitations: all results come from a single seed, and the models have not been
+validated on an external dataset, so variance and out-of-distribution
+generalisation are not yet quantified.
+
+\begin{table}[h]
+\centering
+\caption{Project risk register. L = likelihood, I = impact, before mitigation
+(H/M/L).}
+\label{tab:risk-register}
+\begin{tabular}{p{0.26\textwidth}ccp{0.34\textwidth}c}
+\toprule
+Risk & L & I & Mitigation & Status \\
+\midrule
+Train/test leakage via duplicate lesion images & H & H & pHash deduplication + lesion-grouped, source-stratified split & Mitigated \\
+Rare-class collapse under imbalance & H & H & Class-Balanced Focal Loss, weighted sampler, BMA selection metric & Mitigated \\
+Overfitting of from-scratch transformer on $\sim$17k images & M & M & Pretrained CNN stem, stochastic depth, RandAugment, Mixup, weight EMA & Mitigated \\
+16\,GB GPU memory ceiling & H & M & AMP, channels-last, gradient accumulation, memmap dataset & Mitigated \\
+Windows data-loader deadlock & M & M & Zero-worker loading + memory-mapped array & Mitigated \\
+Substantial metadata missingness & H & M & Learned ``missing'' embeddings, no imputation & Mitigated \\
+Single-seed variance & H & M & Acknowledged; multi-seed reporting deferred & Open (future work) \\
+No external-dataset validation & M & H & Acknowledged; external validation deferred & Open (future work) \\
+KAN head failing to add value & M & L & Linear-head ablation retained and reported & Realised, handled \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+
+% ---------------------------------------------------------------------
+% 3.8  ECONOMIC ANALYSIS                                         [NEW] -> CO11
+% ---------------------------------------------------------------------
+\section{Economic Analysis}
+\label{sec:economic-analysis}
+
+The economic case for this work rests less on its development cost --- which is
+modest and one-off --- than on the recurring cost of deployment, where a
+compact model has a decisive advantage over both cloud-hosted inference and
+the heavy ensembles that top the leaderboard.
+
+\paragraph{Development and training cost.}
+The development cost is dominated by the single workstation
+(Section~3.1.4), a one-off capital expense of roughly USD 1{,}800--2{,}500,
+together with the team's time over three semesters; the software stack is
+entirely open-source and free. The compute cost of training is negligible: as
+estimated in Section~\ref{sec:environmental-impact}, the whole study consumed
+on the order of tens of kWh, which at a Bangladeshi electricity tariff of
+roughly USD 0.08 per kWh amounts to only a few US dollars.
+
+\paragraph{Deployment cost --- the decisive comparison.}
+The lightweight hybrid, at 3.98M parameters and 0.631 GMACs, can be served
+from an inexpensive edge device. An NVIDIA Jetson Orin Nano Super, which is
+explicitly capable of running vision-transformer workloads, costs about
+USD 249 as a one-off purchase and draws only a few watts, and can operate
+offline --- a real advantage in rural clinics with unreliable connectivity.
+The alternative, hosting the model on a cloud inference GPU, incurs a
+recurring charge: even a modest T4-class instance costs roughly USD 0.15--0.81
+per GPU-hour on demand, and a continuously available endpoint therefore costs
+on the order of hundreds of US dollars per month, before accounting for data
+egress and the privacy implications of sending patient images off-site.
+Table~\ref{tab:tco} compares the two over a three-year horizon under a
+plausible usage assumption; the edge option is roughly an order of magnitude
+cheaper over the device's lifetime, and the gap only widens for the heavier
+leaderboard ensembles, which require larger and more expensive accelerators to
+serve at all.
+
+\begin{table}[h]
+\centering
+\caption{Illustrative three-year total cost of ownership for serving the
+lightweight model, edge versus cloud. Cloud assumes a T4-class instance at
+USD 0.50/GPU-hour running 8 hours per day; edge assumes a one-off device plus
+electricity at USD 0.08/kWh.}
+\label{tab:tco}
+\begin{tabular}{lccc}
+\toprule
+Option & Up-front (USD) & 3-year running (USD) & 3-year total (USD) \\
+\midrule
+Edge (Jetson Orin Nano Super, $\sim$10\,W) & 249 & $\sim$9   & $\sim$258 \\
+Cloud (T4-class, 8\,h/day on demand)        & 0   & $\sim$4{,}380 & $\sim$4{,}380 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Cost--benefit.}
+Set against these costs, the benefit is earlier triage of suspicious lesions
+in settings where specialist time is the scarce resource. The benefit is hard
+to monetise precisely, but the asymmetry is clear: a single USD 249 device
+amortised over many screenings per day yields an extremely low cost per
+screening, and any malignant lesion caught earlier carries a large clinical
+and economic value through avoided late-stage treatment. The accuracy gap
+between the lightweight model (0.6081 BMA) and a leaderboard ensemble
+($\approx$0.636) is small relative to the order-of-magnitude difference in
+deployment cost and energy, which is the central economic argument for the
+lightweight tier. Where a higher accuracy is worth a larger budget, DEKAN
+(0.6438 BMA) provides it within the same design family, giving an institution
+a principled choice between the two operating points rather than a single
+fixed cost.

@@ -1,0 +1,28 @@
+\begin{abstract}
+Dermoscopy technique for classification of skin lesions may be useful in early
+diagnosis of severe skin diseases and in the clinical management of skin
+lesions. The challenge is to create an accurate and clinically usable system.
+We create two versions of this design, based on requirements. The first one is
+light in weight. It adopts a truncated MobileNetV2 backbone along with a compact
+transformer, and with only 3.98 million parameters, it achieves 60.8\% BMA
+(balanced multi-class accuracy). This compact design facilitates easy
+installation within typical clinic environments, where space is a constraint.
+The second version emphasizes more balanced accuracy than capacity of the
+parameters. It is composed of two different pre-trained backbones
+(DenseNet-121 and EfficientNet-B0) and a learned attention mechanism that
+selectively fuses information from both followed with a Kolmogorov Arnold
+network as the final classifier and attains a BMA of 64.4\% on 16.45M
+parameters. A dermatologist might consider the clinical context in the
+classification process but this information is seldom taken into account by
+image-based classifiers. In this case, both models include patient metadata as
+added diagnostic context directly into the classification pipeline with the
+data for age, sex and location of the body part where the lesion occurred. The
+models provide an efficient and accurate balance for real-world dermatology
+applications over same-budget baselines.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Skin lesion classification; ISIC-2019; dermoscopy;
+CNN--Transformer; metadata fusion; cross-attention; Kolmogorov--Arnold Network;
+class imbalance; balanced multi-class accuracy; lightweight deep learning.
+\end{IEEEkeywords}

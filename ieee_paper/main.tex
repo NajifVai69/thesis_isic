@@ -1,0 +1,68 @@
+%*******************************************************************
+%   IEEE conference-format paper (reformatted from the BracU thesis)
+%
+%   Paper: Hybrid CNN-Transformer Networks with Clinical Metadata
+%          for Skin Lesion Classification (ISIC-2019)
+%
+%   This is a structural reformat of the original thesis into IEEEtran
+%   two-column conference style. No academic content (text, numbers,
+%   equations, citations, figures, captions) was changed.
+%*******************************************************************
+
+\documentclass[conference]{IEEEtran}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\graphicspath{{figures/}}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{microtype}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta, positioning, fit}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+
+\begin{document}
+
+\title{Hybrid CNN--Transformer Networks with Clinical Metadata for Skin Lesion Classification}
+
+\author{%
+\IEEEauthorblockN{Nazif Bin Morshed, Md.~Samin Yaser, Sayem Afridi,
+Mos.~Mahabuba Akter Munia, and Nazmus Shakib}
+\IEEEauthorblockA{Department of Computer Science and Engineering\\
+Brac University\\
+Student IDs: 21201484, 21201033, 21301044, 24241110, 21201667}
+}
+
+\maketitle
+
+\input{sections/abstract}
+
+\section{Introduction}
+\input{sections/introduction}
+
+\section{Related Work}
+\input{sections/related_work}
+
+\section{Dataset}
+\input{sections/requirements}
+
+\section{Methodology}
+\input{sections/methodology}
+
+\section{Results and Discussion}
+\input{sections/results}
+
+\section{Conclusion}
+\label{sec:conclusion}
+\input{sections/conclusion}
+
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}

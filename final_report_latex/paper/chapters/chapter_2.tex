@@ -1,0 +1,129 @@
+\section{Preliminaries}
+
+Before reviewing prior work it helps to fix a few ideas that recur throughout
+the thesis. A convolutional neural network builds up a representation of an image
+through stacked local filters, which makes it very good at capturing texture and
+short-range structure but, by construction, slow to relate distant parts of an
+image to one another. A transformer takes the opposite stance: it treats the
+image as a set of tokens and lets every token attend to every other through
+self-attention~\cite{vaswani2017attention,dosovitskiy2021vit}, so global
+relationships are available from the first layer at the cost of weaker built-in
+spatial priors and a hunger for data. The \emph{attention} operation at the
+heart of both transformers and our fusion modules computes a weighted average of
+``value'' vectors, where the weights come from the similarity between a
+``query'' and a set of ``keys''; when the query comes from one source and the
+keys and values from another, the same mechanism becomes \emph{cross-attention},
+which is how we inject clinical metadata into the image representation. Finally,
+a Kolmogorov--Arnold Network (KAN)~\cite{liu2024kan} replaces the fixed
+activation and linear weights of an ordinary layer with learnable spline
+functions on the edges of the network, a recent idea we evaluate as a classifier
+head.
+
+\section{Review of Existing Research}
+
+\subsection{Convolutional backbones used in this work}
+
+The convolutional components of both our models are standard, well-understood
+backbones, chosen because their behaviour and pretrained weights are reliable.
+\textbf{MobileNetV2}~\cite{sandler2018mobilenetv2} introduced the inverted
+residual block with a linear bottleneck, which keeps the network cheap by
+expanding to a higher-dimensional space only inside each block and using
+depthwise convolutions. Its early stages encode generic edges and textures very
+efficiently, which is why we use a truncated MobileNetV2 as the stem of our
+lightweight model. \textbf{EfficientNet-B0}~\cite{tan2019efficientnet} is the
+base model of a family obtained by compound scaling of depth, width, and
+resolution together; at roughly 5M parameters it is a strong accuracy-per-FLOP
+baseline and one of the two backbones in our flagship model.
+\textbf{DenseNet-121}~\cite{huang2017densenet} connects each layer to every
+subsequent layer, encouraging feature reuse and giving a rich, gradient-friendly
+representation; it is the second backbone in the flagship model and contributes a
+different inductive bias from EfficientNet. We also include
+\textbf{ResNet-18}~\cite{he2016resnet}, the residual-learning network that made
+very deep training practical, as a familiar reference point.
+
+\subsection{Transformers and CNN Transformer hybrids}
+
+The \textbf{Vision Transformer}~\cite{dosovitskiy2021vit} showed that a pure
+transformer, given enough data, can match convolutional models on image
+classification by splitting an image into patches and treating them as a token
+sequence. Its weakness on smaller datasets motivated hybrid designs that keep a
+convolutional front end. \textbf{MobileViT}~\cite{mehta2022mobilevit} interleaves
+convolutions with transformer blocks to get a mobile-friendly model that still
+reasons globally, and \textbf{EfficientFormer}~\cite{li2022efficientformer} shows
+that transformer-grade accuracy can be reached at MobileNet-like latency with a
+carefully chosen dimension-consistent design. We treat both as direct,
+same-spirit baselines, since a reviewer will reasonably ask how a new hybrid
+compares against existing lightweight hybrids rather than against pure CNNs
+alone. Our own design differs from these in where the convolution-to-transformer
+hand-off happens and, more importantly, in that the transformer's class token is
+used as a query that attends over clinical metadata.
+
+\subsection{Kolmogorov Arnold Networks}
+
+KANs~\cite{liu2024kan} are a recent alternative to the multilayer perceptron,
+grounded in the Kolmogorov Arnold representation theorem, in which the learnable
+parameters are the coefficients of B-spline functions placed on the network's
+edges rather than scalar weights feeding fixed activations. The promise is more
+expressive, more interpretable units, sometimes at fewer parameters. KANs are
+still new and most evidence comes from small scientific-regression problems, so
+whether they help as a classifier head on a noisy, imbalanced vision task is an
+open question. We include a KAN head as the final classifier in our flagship
+model to explore whether its learnable splines add value at the output stage of
+a well-trained vision backbone.
+
+\subsection{Clinical metadata fusion}
+
+The work closest in spirit to ours is by Pacheco and
+Krohling~\cite{pacheco2020impact,pacheco2021attention}. They showed first that
+adding patient clinical information measurably improves automated skin cancer
+detection~\cite{pacheco2020impact}, and then proposed an attention-based
+mechanism to combine images and metadata inside a deep
+model~\cite{pacheco2021attention}. Gessert et al.~\cite{gessert2020ensembles},
+the basis of the top ISIC-2019 challenge entry, also fed metadata into an
+ensemble of EfficientNets. The key methodological point we adopt from this line
+of work is that missing metadata should be represented explicitly with a
+learned ``missing'' embedding rather than imputed with a fabricated value,
+so the model receives an honest ``unknown'' signal. Where we depart from prior
+work is in the backbone: Pacheco and Krohling fused metadata onto heavy CNNs,
+whereas we attach the same idea to a lightweight hybrid and to a dual-backbone
+hybrid, and we make an explicit efficiency claim about the result.
+
+\subsection{Skin lesion classification and ISIC benchmarks}
+
+Beyond the specific components above, automated dermoscopy has a large
+literature. Esteva et al.~\cite{esteva2017dermatologist} demonstrated
+dermatologist-level melanoma classification with a single large CNN, and the
+ISIC challenges~\cite{codella2018skin} have since standardised evaluation. The
+ISIC-2019 dataset is itself a union of several sources, most prominently
+HAM10000~\cite{tschandl2018ham10000} and BCN20000~\cite{isic2019challenge},
+which is why source-aware splitting matters when building a fair evaluation. On
+the ISIC-2019 leaderboard~\cite{isic2019leaderboard}, where the official ranking
+metric is balanced accuracy, the strongest published entries are large
+ensembles: the top entry (DAISYLab) reached a balanced accuracy of 0.636 with an
+ensemble of multi-resolution EfficientNets plus SENet-154, followed by entries
+around 0.61 and 0.59, again ensembles of EfficientNet and SE-ResNeXt variants.
+These numbers set a useful ceiling and a reminder that single, lightweight
+models operate in a different efficiency regime than the leaderboard's
+ensembles.
+
+Most directly relevant to our experimental design, Aktan et
+al.~\cite{aktan2025comparison} recently compared several leading deep learning
+architectures on this exact dataset, providing a clean, single-model reference
+for how standard backbones behave on ISIC-2019 under a common protocol. Our
+study extends that kind of controlled comparison in two directions: we add
+clinical metadata fusion to the comparison, and we report results under a tight
+efficiency budget, so that accuracy is always read together with parameter count
+and compute.
+
+\section{Summary of Key Findings}
+
+Three observations from the literature shape our design. First, hybrid
+CNN--Transformer models are a sensible match for dermoscopy because lesions are
+defined by both local texture and global shape, but the existing lightweight
+hybrids do not use clinical context. Second, metadata fusion clearly helps on
+this task, and the practical detail that decides whether it helps is how
+missing values are handled learned embeddings rather than imputation. Third,
+the best-published numbers on ISIC-2019 come from heavy ensembles, which leaves
+an open and useful niche for a single, small model that uses metadata to close
+part of the gap. This is precisely the gap the two models in this thesis are
+designed to fill.

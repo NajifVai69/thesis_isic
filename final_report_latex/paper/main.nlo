@@ -1,0 +1,12 @@
+\nomenclatureentry{aBMA@[{BMA}]\begingroup Balanced Multi-class Accuracy (macro-recall)\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aCNN@[{CNN}]\begingroup Convolutional Neural Network\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aViT@[{ViT}]\begingroup Vision Transformer\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aKAN@[{KAN}]\begingroup Kolmogorov--Arnold Network\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aCB-Focal@[{CB-Focal}]\begingroup Class-Balanced Focal Loss\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aTTA@[{TTA}]\begingroup Test-Time Augmentation\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aEMA@[{EMA}]\begingroup Exponential Moving Average\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aAMP@[{AMP}]\begingroup Automatic Mixed Precision\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aGMAC@[{GMAC}]\begingroup Giga Multiply--Accumulate operations\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aISIC@[{ISIC}]\begingroup International Skin Imaging Collaboration\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aDEKAN@[{DEKAN}]\begingroup Dual-backbone, Ensemble-fusion, KAN classifier (our flagship model)\nomeqref {0}|nompageref}{Title}
+\nomenclatureentry{aAUC@[{AUC}]\begingroup Area Under the (ROC) Curve\nomeqref {0}|nompageref}{Title}

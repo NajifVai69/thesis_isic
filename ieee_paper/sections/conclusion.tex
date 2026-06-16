@@ -1,0 +1,33 @@
+\subsection{Summary}
+
+This thesis set out to build skin-lesion classifiers for ISIC-2019 that are both
+accurate across all eight classes and practical to deploy, and that use the
+clinical metadata a dermatologist would normally have on hand. We approached the
+problem with a single design philosophy: convolutional features for local
+texture, a transformer trunk for global structure, and a cross-attention head
+that folds in age, sex, and lesion site, realised at two points on the
+efficiency curve. The lightweight hybrid, at 3.98M parameters and 0.631 GMACs,
+reaches a balanced multi-class accuracy of 0.6081 and is the most
+parameter-efficient model in the sub-6M budget, beating all five lightweight
+baselines including the strong hybrid baselines MobileViT-S and
+EfficientFormer-L1. The flagship DEKAN model, at 16.45M parameters, reaches 0.6438 BMA, comparable
+to the balanced accuracy of the top ISIC-2019 leaderboard ensemble in a single
+model; a linear-head ablation of the same architecture (dekan\_linear) reaches
+0.6510, the highest figure in the study, with the implication that the KAN
+classifier head adds no accuracy benefit on this task.
+
+\subsection{Future Work}
+
+The most immediate next steps follow directly from the limitations in
+Chapter~5. Repeating every run across at least three seeds and reporting mean and
+standard deviation would put the comparisons on a publication-grade footing.
+Completing the two remaining unfinished ablations (DenseNet-121 alone and
+EfficientNet-B0 alone within the DEKAN framework) would pin down the
+individual contribution of each backbone and quantify the size of the
+dual-backbone fusion gain. Evaluating on an external dataset, for example mapping
+the eight-class output to a melanoma-versus-rest decision on a separate
+collection, would test generalisation beyond ISIC-2019. Finally, qualitative
+interpretability, using Grad-CAM on the CNN stem and attention rollout on the
+transformer trunk, would help confirm that the models attend to clinically
+meaningful regions, which matters for any tool intended to support, rather than
+replace, a clinician.

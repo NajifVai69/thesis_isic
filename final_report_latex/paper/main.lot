@@ -1,0 +1,22 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {3.1}{\ignorespaces Class distribution of the full ISIC-2019 collection (before deduplication) and imbalance relative to the largest class (NV).}}{7}{table.caption.11}%
+\contentsline {table}{\numberline {3.2}{\ignorespaces Functional requirements of the proposed system.}}{8}{table.caption.12}%
+\contentsline {table}{\numberline {3.3}{\ignorespaces Non-functional requirements and how the design satisfies them.}}{10}{table.caption.13}%
+\contentsline {table}{\numberline {3.4}{\ignorespaces Estimated training energy and carbon for the two proposed models, assuming an average board power of 0.25\,kW and a grid emission factor of $0.62\ \text {kg\,CO}_2/\text {kWh}$.}}{12}{table.caption.14}%
+\contentsline {table}{\numberline {3.5}{\ignorespaces Project schedule across the three thesis phases. A filled cell ($\blacksquare $) indicates active development during that phase.}}{14}{table.caption.15}%
+\contentsline {table}{\numberline {3.6}{\ignorespaces Project risk register (L = Likelihood, I = Impact, graded as High/Medium/Low).}}{15}{table.caption.16}%
+\contentsline {table}{\numberline {3.7}{\ignorespaces Illustrative three-year Total Cost of Ownership (TCO) for model deployment. Cloud estimates assume a T4 instance at USD 0.50/GPU-hour active 8 hours per day; edge estimates reflect the hardware purchase price plus local electricity tariffs.}}{16}{table.caption.17}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {4.1}{\ignorespaces Per-model training settings. All other hyperparameters (loss, optimiser base LR, schedule, EMA, augmentation) are identical across models.}}{22}{table.caption.19}%
+\addvspace {10\p@ }
+\contentsline {table}{\numberline {5.1}{\ignorespaces Main results on the ISIC-2019 test set (with 8-view TTA). Best value in each column is in \textbf {bold}; the two proposed models are marked. A linear-head ablation of DEKAN (dekan\_linear) reaches a higher BMA of 0.6510 but is reported with the other ablations in Section~\ref {subsec:ablation-study} rather than here, so this table is not its intended place; the bold BMA marks the best main model.}}{24}{table.caption.20}%
+\contentsline {table}{\numberline {5.2}{\ignorespaces Summary of empirical issues identified during development and the corresponding design modifications implemented in the final architecture.}}{26}{table.caption.24}%
+\contentsline {table}{\numberline {5.3}{\ignorespaces Per-class recall on the ISIC-2019 test set (with TTA).}}{27}{table.caption.25}%
+\contentsline {table}{\numberline {5.4}{\ignorespaces Efficiency: balanced accuracy per million parameters (TTA BMA).}}{30}{table.caption.29}%
+\contentsline {table}{\numberline {5.5}{\ignorespaces BMA without and with 8-view TTA, and the change.}}{31}{table.caption.31}%
+\contentsline {table}{\numberline {5.6}{\ignorespaces Lightweight hybrid ablation (TTA BMA). All four variants were trained and evaluated.}}{32}{table.caption.32}%
+\contentsline {table}{\numberline {5.7}{\ignorespaces DEKAN ablation: effect of clinical metadata and the KAN vs.\ linear classifier head (TTA BMA). The single-backbone variants were not trained, so the dual-backbone fusion gain cannot yet be quantified.}}{33}{table.caption.34}%
+\addvspace {10\p@ }

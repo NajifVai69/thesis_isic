@@ -1,0 +1,40 @@
+% Grouped signature line for Four Authors
+\newcommand*\wildcard[2][6cm]{\vspace{2cm}\parbox{#1}{\hrulefill\par#2}}
+\newcommand*\signedwildcard[3][6cm]{%
+  \vspace{0.8cm}\parbox{#1}{\centering%
+    \ifstrempty{#2}{%
+      \vspace{1.2cm}\par
+    }{%
+      \IfFileExists{#2}{\includegraphics[height=1.2cm]{#2}\par}{\vspace{1.2cm}\par}%
+    }%
+    \hrulefill\par#3}}
+
+\section*{Declaration}
+
+It is hereby declared that :
+
+\begin{enumerate}
+  \item The thesis submitted is our own original work while completing degree at Brac University.
+  \item The thesis does not contain material previously published or written by a third party, except where this is appropriately cited through full and accurate referencing.
+  \item The thesis does not contain material which has been accepted, or submitted, for any other degree or diploma at a university or other institution.
+  \item We have acknowledged all main sources of help.
+\end{enumerate}
+
+\vspace{1cm}
+\textbf{Student's Full Name \& Signature:}
+
+\begingroup
+
+    \begin{center}
+        \signedwildcard{signatures/Najif.png}{\centerline{Nazif Bin Morshed} ~\\ \centerline{21201484}}\hspace{2cm}
+        \signedwildcard{signatures/Samin.png}{\centerline{Md. Samin Yaser} ~\\ \centerline{21201033}}
+        \hspace{2cm}
+        \signedwildcard{signatures/sayem.png.JPG}{\centerline{Sayem Afridi} ~\\ \centerline{21301044}}\hspace{2cm}
+        \signedwildcard{signatures/Munia.png}{\centerline{Mahabuba Akter Munia} ~\\ \centerline{24241110} }
+        \hspace{2cm}
+        \signedwildcard{signatures/Shakib-signature.png}{\centerline{Nazmus Shakib} ~\\ \centerline{21201667} }
+    \end{center}
+
+\endgroup
+
+\pagebreak

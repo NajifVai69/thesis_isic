@@ -1,0 +1,17 @@
+\babel@toc {english}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {4.1}{\ignorespaces High-level architecture of the two proposed models. Both share the same philosophy convolutional features, a transformer trunk, and a metadata cross-attention head at two capacity points. (a) the lightweight hybrid uses a single truncated MobileNetV2 stem and a 6-layer ViT trunk with a linear head; (b) DEKAN fuses two pretrained backbones (DenseNet-121, EfficientNet-B0) through a learned attention bank, runs an 8-layer TinyViT trunk, and ends in a KAN head.}}{19}{figure.caption.18}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Model comparison on the ISIC-2019 test set: BMA (with and without TTA) on the left, macro-F1 and macro-AUC on the right. The two proposed models are highlighted.}}{24}{figure.caption.21}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Training and validation loss (left) and BMA (right) for the lightweight hybrid model over 150 epochs. The dashed line marks the best validation BMA.}}{25}{figure.caption.22}%
+\contentsline {figure}{\numberline {5.3}{\ignorespaces Training and validation loss (left) and BMA (right) for the DEKAN model over 150 epochs. The dashed line marks the best validation BMA.}}{25}{figure.caption.23}%
+\contentsline {figure}{\numberline {5.4}{\ignorespaces Per-class recall of the lightweight hybrid versus EfficientNet-B0, sorted by the hybrid's recall.}}{28}{figure.caption.26}%
+\contentsline {figure}{\numberline {5.5}{\ignorespaces Confusion matrix for the lightweight hybrid (normalised by true class with TTA).}}{28}{figure.caption.27}%
+\contentsline {figure}{\numberline {5.6}{\ignorespaces Confusion matrix for the DEKAN flagship model (normalised by true class, with TTA).}}{29}{figure.caption.28}%
+\contentsline {figure}{\numberline {5.7}{\ignorespaces Accuracy vs.\ parameters; bubble size is proportional to GMACs. The dotted line marks the 6M-parameter budget. The lightweight hybrid (red) gives the best accuracy within budget.}}{30}{figure.caption.30}%
+\contentsline {figure}{\numberline {5.8}{\ignorespaces Lightweight hybrid ablation: BMA for all four variants. CNN-only and ViT-only perform similarly in isolation; the full hybrid is substantially higher.}}{32}{figure.caption.33}%
+\contentsline {figure}{\numberline {5.9}{\ignorespaces DEKAN ablation: effect of clinical metadata and KAN vs.\ linear classifier head on BMA. Single-backbone variants were not trained and are absent.}}{33}{figure.caption.35}%
+\addvspace {10\p@ }

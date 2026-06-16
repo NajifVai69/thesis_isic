@@ -1,0 +1,44 @@
+All experiments use the ISIC-2019 training collection, a public set of 25{,}331
+dermoscopic images labelled across the eight diagnostic classes listed in
+Chapter~1. The collection is itself a union of three sources HAM10000,
+BCN20000, and MSK which we infer from the image-ID prefix, because keeping
+track of the source matters for building an honest train/test split. Each image
+also carries clinical metadata: approximate age, sex, the general anatomical
+site of the lesion, and a lesion identifier that groups multiple images of the
+same physical lesion.
+
+The defining property of this dataset, and the one that drives most of our
+design decisions, is its class imbalance. Table~\ref{tab:classdist} shows the
+per-class counts for the full collection. The largest class, nevus, is more than
+fifty times larger than the smallest, dermatofibroma. Several of the rare
+classes (for example SCC and AK) are clinically important, so a model that
+simply learns the head of this distribution would be useless in practice. This
+is the central reason we report balanced multi-class accuracy rather than overall
+accuracy throughout.
+
+\begin{table}[!t]
+\centering
+\caption{Class distribution of the full ISIC-2019 collection (before
+deduplication) and imbalance relative to the largest class (NV).}
+\label{tab:classdist}
+\begin{tabular}{llrr}
+\toprule
+Code & Full name & Images & Ratio vs.\ NV \\
+\midrule
+MEL  & Melanoma                  & 4{,}522  & 2.8$\times$  \\
+NV   & Melanocytic nevus         & 12{,}875 & 1$\times$    \\
+BCC  & Basal cell carcinoma      & 3{,}323  & 3.9$\times$  \\
+AK   & Actinic keratosis         & 867      & 14.8$\times$ \\
+BKL  & Benign keratosis          & 2{,}624  & 4.9$\times$  \\
+DF   & Dermatofibroma            & 239      & 53.9$\times$ \\
+VASC & Vascular lesion           & 253      & 50.9$\times$ \\
+SCC  & Squamous cell carcinoma   & 628      & 20.5$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The metadata is genuinely incomplete: roughly 30\% of age values, about 20\% of
+sex values, and about 15\% of anatomical-site values are missing, with the
+recorded ages centred near 54 years. Rather than fill these gaps with guessed
+values, our requirement is that the model treat ``missing'' as a first-class,
+learnable signal, which is reflected directly in the architecture (Chapter~4).
